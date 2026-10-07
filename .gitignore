@@ -1,0 +1,68 @@
+# J.A.R.V.I.S. Git Ignore Rules
+
+# ----------------------------------------------------
+# 1. Environment & Secrets (CREDENTIAL INTEGRITY)
+# ----------------------------------------------------
+.env
+.env.local
+.env.*.local
+*.env
+*.pem
+*.key
+*.cert
+
+# ----------------------------------------------------
+# 2. Local Databases & Persistent User Memory
+# ----------------------------------------------------
+memory/*.db
+memory/*.sqlite
+memory/*.sqlite3
+*.db
+*.sqlite
+*.sqlite3
+
+# ----------------------------------------------------
+# 3. Python Cache & Build Artifacts
+# ----------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# ----------------------------------------------------
+# 4. Logs & Runtime Temporary Directories
+# ----------------------------------------------------
+logs/*.log
+logs/*
+!logs/.gitkeep
+temp/*
+!temp/.gitkeep
+dennett_dissertation/
+
+# ----------------------------------------------------
+# 5. Virtual Environments
+# ----------------------------------------------------
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# ----------------------------------------------------
+# 6. IDE, Editor & OS Metadatas
+# ----------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
