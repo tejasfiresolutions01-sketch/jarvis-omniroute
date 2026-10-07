@@ -74,24 +74,20 @@ class OffgridSentinel:
         python_exe = sys.executable
         script_path = str(config.BASE_DIR / "tools" / "run_pending_offline.py")
 
-        cmd = [
-            "schtasks", "/create",
-            "/tn", "JARVIS_OFFLINE_AUTONOMY",
-            "/tr", f'"{python_exe}" "{script_path}"',
-            "/sc", "minute",
-            "/mo", "15",
-            "/waketoun",  # Critical: Wake the computer to run this task
-            "/f",
-            "/rl", "highest"
-        ]
+        ps_cmd = (
+            f"$action = New-ScheduledTaskAction -Execute '{python_exe}' -Argument '\"{script_path}\"'; "
+            f"$trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 15); "
+            f"$settings = New-ScheduledTaskSettingsSet -WakeToRun -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries; "
+            f"Register-ScheduledTask -TaskName 'JARVIS_OFFLINE_AUTONOMY' -Action $action -Trigger $trigger -Settings $settings -Force"
+        )
 
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True)
+            result = subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd], capture_output=True, text=True)
             if result.returncode == 0:
-                print("[Offgrid Sentinel]: Hardware ACPI Wake Task registered (/waketoun).")
+                print("[Offgrid Sentinel]: Hardware ACPI Wake Task registered (-WakeToRun).")
                 return True
             else:
-                print(f"[Offgrid Sentinel Notice]: schtasks notice: {result.stderr.strip() or result.stdout.strip()}")
+                print(f"[Offgrid Sentinel Notice]: Task registration notice: {result.stderr.strip() or result.stdout.strip()}")
                 return False
         except Exception as e:
             print(f"[Offgrid Sentinel Anomaly]: {e}")
