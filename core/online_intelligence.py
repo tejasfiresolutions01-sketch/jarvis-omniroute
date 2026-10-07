@@ -134,5 +134,88 @@ class OnlineIntelligence:
 
         return None
 
+    def query_specific_model(self, prompt: str, model_name: str, context: str = "") -> str:
+        """
+        Directs an explicit directive to a specific external AI model (OpenAI, Gemini, Mistral, etc.)
+        via OmniRoute or direct APIs.
+        """
+        lower_model = model_name.lower().strip()
+
+        if "gemini" in lower_model:
+            target_model = "ddgw/gemini-flash" if "gemini" not in config.OMNIROUTE_MODEL else config.OMNIROUTE_MODEL
+            direct_call = "gemini"
+        elif "openai" in lower_model or "gpt" in lower_model:
+            target_model = "ddgw/gpt-5.4-mini"
+            direct_call = "openai"
+        elif "mistral" in lower_model:
+            target_model = "ddgw/mistral-small-2603"
+            direct_call = None
+        else:
+            target_model = "auto/best-chat"
+            direct_call = None
+
+        headers = {
+            "Authorization": f"Bearer {config.OMNIROUTE_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        messages = [
+            {"role": "system", "content": self.SYSTEM_INSTRUCTION},
+            {"role": "user", "content": prompt}
+        ]
+
+        # 1. Try OmniRoute gateway with target model
+        try:
+            payload = {
+                "model": target_model,
+                "messages": messages,
+                "max_tokens": 800,
+                "temperature": 0.7
+            }
+            resp = requests.post(f"{config.OMNIROUTE_BASE_URL}/chat/completions", headers=headers, json=payload, timeout=6.5)
+            if resp.status_code == 200:
+                choices = resp.json().get("choices", [])
+                if choices:
+                    content = choices[0].get("message", {}).get("content", "").strip()
+                    if content:
+                        return f"According to {model_name.capitalize()}: {content}"
+        except Exception:
+            pass
+
+        # 2. Direct OpenAI API fallback
+        if direct_call == "openai" and config.OPENAI_API_KEY:
+            try:
+                o_resp = requests.post(
+                    "https://api.openai.com/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {config.OPENAI_API_KEY}", "Content-Type": "application/json"},
+                    json={"model": "gpt-4o-mini", "messages": messages, "max_tokens": 800},
+                    timeout=6.5
+                )
+                if o_resp.status_code == 200:
+                    choices = o_resp.json().get("choices", [])
+                    if choices:
+                        content = choices[0].get("message", {}).get("content", "").strip()
+                        if content:
+                            return f"According to OpenAI: {content}"
+            except Exception:
+                pass
+
+        # 3. Direct Gemini API fallback
+        if direct_call == "gemini" and config.GEMINI_API_KEY:
+            try:
+                from google import genai
+                client = genai.Client(api_key=config.GEMINI_API_KEY)
+                g_resp = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
+                if g_resp and g_resp.text:
+                    return f"According to Gemini: {g_resp.text.strip()}"
+            except Exception:
+                pass
+
+        # 4. Standard free cascade fallback
+        general_res = self.query(prompt, context=context)
+        if general_res:
+            return f"According to {model_name.capitalize()}: {general_res}"
+
+        return f"Sir, I attempted to command {model_name.capitalize()}, but the model provider is currently unreachable."
+
 # Global singleton
 online_intelligence = OnlineIntelligence()

@@ -204,6 +204,46 @@ class LocalIntelligence:
             )
 
         # ─────────────────────────────────────────────────────────────────────
+        # 5a. Real-Time Web Search & Internet Intelligence
+        # ─────────────────────────────────────────────────────────────────────
+        search_match = re.search(
+            r"^(?:search the web for|search the internet for|search web for|search online for|search for|google|look up on web|look up on internet|web search)\s+(.+)$",
+            clean,
+            re.IGNORECASE
+        )
+        if search_match:
+            query = search_match.group(1).strip()
+            from tools.web_tools import search_web
+            results = search_web(query)
+            return True, results
+
+        fetch_match = re.search(
+            r"^(?:fetch webpage|read webpage|fetch site|read site|read url)\s+(https?://\S+|\S+\.\S+)$",
+            clean,
+            re.IGNORECASE
+        )
+        if fetch_match:
+            url = fetch_match.group(1).strip()
+            from tools.web_tools import fetch_webpage_content
+            content = fetch_webpage_content(url)
+            return True, f"Web content from {url}, sir:\n{content}"
+
+        # ─────────────────────────────────────────────────────────────────────
+        # 5a-2. Command Other AI Models & Multi-Model Gateway
+        # ─────────────────────────────────────────────────────────────────────
+        ai_match = re.search(
+            r"^(?:ask|use|command)\s+(openai|gemini|mistral|claude|other ai|another ai|external ai)\s*(?:to|about|for)?\s*[:\-]?\s*(.+)$",
+            clean,
+            re.IGNORECASE
+        )
+        if ai_match:
+            provider = ai_match.group(1).strip()
+            sub_prompt = ai_match.group(2).strip()
+            from core.online_intelligence import online_intelligence
+            ai_res = online_intelligence.query_specific_model(sub_prompt, model_name=provider)
+            return True, ai_res
+
+        # ─────────────────────────────────────────────────────────────────────
         # 5b. OmniRoute Multi-Provider Gateway Status
         # ─────────────────────────────────────────────────────────────────────
         if any(p in clean_lower for p in ["omniroute status", "omniroute", "is omniroute running", "check omniroute", "omniroute gateway"]):

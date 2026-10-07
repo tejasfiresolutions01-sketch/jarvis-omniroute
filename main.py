@@ -143,6 +143,13 @@ def main():
     except Exception:
         pass
 
+    # 8. Start Autonomous Display Wake Greeting Sentinel
+    try:
+        from core.display_sentinel import display_sentinel
+        display_sentinel.start()
+    except Exception:
+        pass
+
     parser = argparse.ArgumentParser(description="J.A.R.V.I.S. Artificial Intelligence System")
     parser.add_argument("--cli", action="store_true", help="Launch in Interactive Command Line mode")
     parser.add_argument("--voice", action="store_true", help="Launch in Hands-Free Continuous Voice Conversation mode")

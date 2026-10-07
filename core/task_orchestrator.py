@@ -86,7 +86,9 @@ class TaskOrchestrator:
         "set_night_shield": lambda enabled=True, warmth=0.70: display_controller.enable_night_shield(float(warmth)) if enabled else display_controller.disable_night_shield(),
         "set_display_brightness": lambda percent=80: display_controller.set_brightness(int(percent)),
         "adaptive_ambient_display": lambda: display_controller.apply_adaptive_ambient(),
-        "display_status": lambda: display_controller.format_status_summary()
+        "display_status": lambda: display_controller.format_status_summary(),
+        # External AI Delegation & Multi-Model Command
+        "command_other_ai": lambda prompt="", model_name="auto": online_intelligence.query_specific_model(str(prompt), str(model_name))
     }
 
     SYSTEM_PROMPT = (
@@ -160,7 +162,8 @@ class TaskOrchestrator:
         has_tool_action = any(k in lower for k in [
             "search the web", "search online", "find online", "google", "look up",
             "write to file", "save to file", "save a file", "create a file", "write a file",
-            "read file", "summarize and save", "fetch webpage", "multi-step"
+            "read file", "summarize and save", "fetch webpage", "multi-step",
+            "command other ai", "use other ai", "ask other ai", "command tools"
         ])
         return (has_compound and len(lower.split()) >= 6) or has_tool_action
 
@@ -208,6 +211,8 @@ class TaskOrchestrator:
                         args["query"] = val
                     elif tool_name in ["git_commit_and_push"]:
                         args["message"] = val
+                    elif tool_name in ["command_other_ai"]:
+                        args["prompt"] = val
 
             calls.append((tool_name, args))
         return calls
