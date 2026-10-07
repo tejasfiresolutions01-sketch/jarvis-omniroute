@@ -237,6 +237,7 @@ class VoiceListener:
 
     def start_wake_word_daemon(self, callback: Callable[[str], bool]):
         """Runs continuous background wake-word monitor for 'Hey Jarvis'."""
+        self._callback = callback
         if self.is_monitoring:
             return
         self.is_monitoring = True
@@ -254,9 +255,10 @@ class VoiceListener:
 
             text, is_auth = self.capture_and_authenticate(timeout=8.0, prompt="Directive, sir: ")
             if text and is_auth:
-                keep = callback(text)
+                cb = getattr(self, "_callback", callback)
+                keep = cb(text)
                 if keep:
-                    self.start_conversation_session(callback)
+                    self.start_conversation_session(cb)
             wake_word_engine.resume()
 
         if wake_word_engine.is_available:
