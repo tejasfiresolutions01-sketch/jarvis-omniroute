@@ -93,6 +93,47 @@ class TestFreeAIMatrix(unittest.TestCase):
             self.assertTrue(handled, f"Failed on phrase: {phrase}")
             self.assertIn(f"According to {prov}: OK", resp)
 
+    def test_omniroute_free_providers_catalog(self):
+        """Verifies all 11 OmniRoute free providers are indexed."""
+        providers = self.matrix.list_omniroute_free_providers()
+        expected = [
+            "duckduckgo-web", "aihorde", "cloudflare-playground", "freetheai",
+            "freebuff", "opencode", "freemodel-dev", "uncloseai",
+            "free-ai", "freeinference", "openai"
+        ]
+        for ep in expected:
+            self.assertIn(ep, providers)
+            self.assertTrue(len(providers[ep]["models"]) > 0)
+
+    def test_omniroute_free_providers_summary(self):
+        """Verifies summary string formatting for OmniRoute free providers."""
+        summary = self.matrix.get_omniroute_free_summary()
+        self.assertIn("DuckDuckGo Web", summary)
+        self.assertIn("AI Horde", summary)
+        self.assertIn("Cloudflare AI Playground", summary)
+
+    @patch("core.free_ai_matrix.requests.post")
+    def test_query_omniroute_provider_direct(self, mock_post):
+        """Tests directly targeting an OmniRoute free provider by alias."""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "choices": [{"message": {"content": "DuckDuckGo response received."}}]
+        }
+        mock_post.return_value = mock_resp
+
+        reply, label = self.matrix.query_omniroute_provider("ddgw", "Test query")
+        self.assertIn("DuckDuckGo response received.", reply)
+        self.assertIn("DuckDuckGo Web", label)
+
+    def test_local_intelligence_omniroute_free_intent(self):
+        """Tests voice recognition of 'list omniroute free providers'."""
+        local_intel = LocalIntelligence()
+        handled, response = local_intel.evaluate_and_execute("list omniroute free providers")
+        self.assertTrue(handled)
+        self.assertIn("OmniRoute active free providers", response)
+        self.assertIn("DuckDuckGo Web", response)
+
     @patch.object(FreeAIMatrix, "query_provider")
     def test_task_orchestrator_tool_dispatch(self, mock_query):
         """Tests orchestrator tool dispatch for command_other_ai."""

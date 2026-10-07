@@ -229,8 +229,15 @@ class LocalIntelligence:
             return True, f"Web content from {url}, sir:\n{content}"
 
         # ─────────────────────────────────────────────────────────────────────
-        # 5a-2. Command Universal Free AI Matrix (All Global Models at Zero Cost)
+        # 5a-2. Command Universal Free AI Matrix (All Global Models & OmniRoute Free Providers)
         # ─────────────────────────────────────────────────────────────────────
+        if any(p in clean_lower for p in [
+            "list omniroute free providers", "omniroute free providers", "show omniroute free providers",
+            "what are the omniroute free providers", "what free providers in omniroute", "omniroute free list"
+        ]):
+            from core.free_ai_matrix import free_ai_matrix
+            return True, free_ai_matrix.get_omniroute_free_summary()
+
         if any(p in clean_lower for p in [
             "list supported ais", "list supported ai", "what ais do you support",
             "what ai do you support", "which ais can you command", "which ai can you command",
@@ -242,7 +249,7 @@ class LocalIntelligence:
             return True, "I can command all major frontier AI models globally at zero cost, sir: " + "; ".join(lines) + "."
 
         ai_match = re.search(
-            r"^(?:ask|use|command)\s+(openai|gpt|claude|anthropic|mistral|deepseek|llama|meta|qwen|alibaba|gemini|google|gemma|other ai|another ai|external ai)\s*(?:to|about|for)?\s*[:\-]?\s*(.+)$",
+            r"^(?:ask|use|command)\s+(openai|gpt|claude|anthropic|mistral|deepseek|llama|meta|qwen|alibaba|gemini|google|gemma|ddgw|duckduckgo|duckduckgo-web|cfp|cloudflare|cloudflare-playground|fta|freetheai|fb|freebuff|oc|opencode|fmd|freemodel|freemodel-dev|unc|uncloseai|horde|aihorde|free-ai|freeinference|other ai|another ai|external ai)\s*(?:to|about|for)?\s*[:\-]?\s*(.+)$",
             clean,
             re.IGNORECASE
         )
