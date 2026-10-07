@@ -186,6 +186,12 @@ class VoiceListener:
         print("\n[Voice Conversation]: Channel opened. Multi-turn dialogue active.")
         idle_start = time.time()
 
+        try:
+            from core.wake_word import wake_word_engine
+            wake_word_engine.pause()
+        except Exception:
+            pass
+
         while self.in_conversation_mode:
             # Wait for previous vocalization to finish before listening
             while is_speaking:
@@ -223,11 +229,39 @@ class VoiceListener:
             # Reset idle timer for next turn
             idle_start = time.time()
 
+        try:
+            from core.wake_word import wake_word_engine
+            wake_word_engine.resume()
+        except Exception:
+            pass
+
     def start_wake_word_daemon(self, callback: Callable[[str], bool]):
         """Runs continuous background wake-word monitor for 'Hey Jarvis'."""
         if self.is_monitoring:
             return
         self.is_monitoring = True
+
+        from core.wake_word import wake_word_engine
+
+        def _on_wake(keyword: str):
+            if not self.is_monitoring or self.in_conversation_mode:
+                return
+            try:
+                from core.audio_visualizer import audio_visualizer
+                audio_visualizer.set_state("listening")
+            except Exception:
+                pass
+
+            text, is_auth = self.capture_and_authenticate(timeout=8.0, prompt="Directive, sir: ")
+            if text and is_auth:
+                keep = callback(text)
+                if keep:
+                    self.start_conversation_session(callback)
+            wake_word_engine.resume()
+
+        if wake_word_engine.is_available:
+            wake_word_engine.start(_on_wake)
+            return
 
         def _monitor_loop():
             print("[Auditory Sentinel]: Background wake-word monitor active ('Hey Jarvis')...")
@@ -275,6 +309,11 @@ class VoiceListener:
     def stop_wake_word_daemon(self):
         self.is_monitoring = False
         self.in_conversation_mode = False
+        try:
+            from core.wake_word import wake_word_engine
+            wake_word_engine.stop()
+        except Exception:
+            pass
 
 # Global singleton
 listener = VoiceListener()
