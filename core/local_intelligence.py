@@ -221,6 +221,62 @@ class LocalIntelligence:
             return True, network_scanner.format_butler_perimeter_report()
 
         # ─────────────────────────────────────────────────────────────────────
+        # 5d. Autonomous Git & Codebase Version Control
+        # ─────────────────────────────────────────────────────────────────────
+        if any(p in clean_lower for p in ["git status", "repo status", "repository status", "check git status"]):
+            from tools.git_controller import git_controller
+            return True, git_controller.format_status_summary()
+
+        if any(p in clean_lower for p in ["git log", "recent commits", "show recent commits", "commit history"]):
+            from tools.git_controller import git_controller
+            return True, git_controller.format_log_summary(limit=4)
+
+        if any(p in clean_lower for p in ["git diff", "what changed", "show git diff", "show changes"]):
+            from tools.git_controller import git_controller
+            return True, git_controller.get_diff_summary()
+
+        commit_match = re.search(r"\b(?:git commit(?:\s+and\s+push)?|commit(?:\s+and\s+push)?(?:\s+with\s+message)?)\s*[:\-]?\s*['\"]?(.+?)['\"]?$", clean, re.IGNORECASE)
+        if commit_match:
+            from tools.git_controller import git_controller
+            msg = commit_match.group(1).strip()
+            _, resp = git_controller.commit_and_push(msg)
+            return True, resp
+
+        branch_match = re.search(r"\b(?:create branch|checkout -b|new branch)\s+([a-zA-Z0-9_\-\/]+)", clean_lower)
+        if branch_match:
+            from tools.git_controller import git_controller
+            b_name = branch_match.group(1).strip()
+            _, resp = git_controller.create_or_switch_branch(b_name, create=True)
+            return True, resp
+
+        switch_match = re.search(r"\b(?:switch to branch|checkout branch|switch branch to)\s+([a-zA-Z0-9_\-\/]+)", clean_lower)
+        if switch_match:
+            from tools.git_controller import git_controller
+            b_name = switch_match.group(1).strip()
+            _, resp = git_controller.create_or_switch_branch(b_name, create=False)
+            return True, resp
+
+        # ─────────────────────────────────────────────────────────────────────
+        # 5e. Smart Windows Clipboard Intelligence
+        # ─────────────────────────────────────────────────────────────────────
+        if any(p in clean_lower for p in ["explain clipboard", "explain what i just copied", "what is on my clipboard", "what did i copy", "inspect clipboard"]):
+            from tools.clipboard_sentinel import clipboard_sentinel
+            return True, clipboard_sentinel.explain_clipboard()
+
+        if any(p in clean_lower for p in ["fix clipboard", "fix clipboard code", "fix the code on my clipboard", "repair clipboard"]):
+            from tools.clipboard_sentinel import clipboard_sentinel
+            _, resp = clipboard_sentinel.fix_clipboard_code()
+            return True, resp
+
+        if any(p in clean_lower for p in ["save clipboard to notes", "save clipboard to memory", "remember clipboard", "save clipboard"]):
+            from tools.clipboard_sentinel import clipboard_sentinel
+            return True, clipboard_sentinel.save_clipboard_to_memory(category="note")
+
+        if any(p in clean_lower for p in ["summarize clipboard", "summarize my clipboard"]):
+            from tools.clipboard_sentinel import clipboard_sentinel
+            return True, clipboard_sentinel.summarize_clipboard()
+
+        # ─────────────────────────────────────────────────────────────────────
         # 6. Time & Date Directives
         # ─────────────────────────────────────────────────────────────────────
         if any(p in clean_lower for p in ["what time is it", "current time", "what's the time", "whats the time", "tell me the time", "time now"]):

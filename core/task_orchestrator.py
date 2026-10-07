@@ -17,6 +17,8 @@ from tools.weather_tools import get_weather
 from tools.briefing_tools import generate_executive_briefing
 from tools.gui_controller import gui_controller
 from tools.network_scanner import network_scanner
+from tools.git_controller import git_controller
+from tools.clipboard_sentinel import clipboard_sentinel
 from core.schedule_manager import schedule_manager
 from core.online_intelligence import online_intelligence
 from core.vector_memory import vector_memory
@@ -59,7 +61,17 @@ class TaskOrchestrator:
         "recall_memory": lambda query="", category=None: vector_memory.recall_context(str(query), category=category) or "No matching memories located.",
         "search_memory": lambda query="", category=None: json.dumps(vector_memory.semantic_search(str(query), category=category)),
         # Local LAN Perimeter & IoT Device Reconnaissance
-        "scan_perimeter": lambda: network_scanner.format_butler_perimeter_report()
+        "scan_perimeter": lambda: network_scanner.format_butler_perimeter_report(),
+        # Autonomous Git & Codebase Version Control
+        "git_status": lambda: git_controller.format_status_summary(),
+        "git_log": lambda limit=5: git_controller.format_log_summary(int(limit)),
+        "git_diff": lambda: git_controller.get_diff_summary(),
+        "git_commit_and_push": lambda message="": git_controller.commit_and_push(str(message))[1],
+        # Smart Windows Clipboard Intelligence
+        "read_clipboard": lambda: clipboard_sentinel.get_clipboard_text(),
+        "explain_clipboard": lambda: clipboard_sentinel.explain_clipboard(),
+        "fix_clipboard_code": lambda: clipboard_sentinel.fix_clipboard_code()[1],
+        "save_clipboard_to_memory": lambda category="note": clipboard_sentinel.save_clipboard_to_memory(str(category))
     }
 
     SYSTEM_PROMPT = (
@@ -97,7 +109,15 @@ class TaskOrchestrator:
         "- store_memory(content='information to remember', category='preference|note|project|fact')\n"
         "- recall_memory(query='query to retrieve from long-term memory')\n"
         "- search_memory(query='search query')\n"
-        "- scan_perimeter()\n\n"
+        "- scan_perimeter()\n"
+        "- git_status()\n"
+        "- git_log(limit=5)\n"
+        "- git_diff()\n"
+        "- git_commit_and_push(message='commit message')\n"
+        "- read_clipboard()\n"
+        "- explain_clipboard()\n"
+        "- fix_clipboard_code()\n"
+        "- save_clipboard_to_memory(category='note')\n\n"
         "Guidelines:\n"
         "1. For multi-step tasks, emit all necessary CALL lines in logical sequence.\n"
         "2. If no tools are required, answer directly with authentic British butler cadence.\n"
@@ -162,6 +182,8 @@ class TaskOrchestrator:
                         args["content"] = val
                     elif tool_name in ["recall_memory", "search_memory"]:
                         args["query"] = val
+                    elif tool_name in ["git_commit_and_push"]:
+                        args["message"] = val
 
             calls.append((tool_name, args))
         return calls
@@ -215,6 +237,14 @@ class TaskOrchestrator:
                     summaries.append(f"queried vector database with result: {str(out)[:140]}")
                 elif tool == "scan_perimeter":
                     summaries.append("conducted a full perimeter sweep across local network nodes")
+                elif tool == "git_status":
+                    summaries.append(f"{out}")
+                elif tool == "git_commit_and_push":
+                    summaries.append(f"{out}")
+                elif tool in ["git_diff", "git_log"]:
+                    summaries.append(f"{str(out)[:120]}")
+                elif tool in ["explain_clipboard", "fix_clipboard_code", "save_clipboard_to_memory"]:
+                    summaries.append(f"{out}")
                 else:
                     summaries.append(f"{tool} completed: {str(out)[:100]}")
             else:
