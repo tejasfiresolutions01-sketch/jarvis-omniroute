@@ -134,6 +134,57 @@ class TestFreeAIMatrix(unittest.TestCase):
         self.assertIn("OmniRoute active free providers", response)
         self.assertIn("DuckDuckGo Web", response)
 
+    def test_fields_of_work_catalog(self):
+        """Verifies all 10 major fields of work are indexed with personas."""
+        fields = self.matrix.list_fields_of_work()
+        expected = [
+            "software_engineering", "mathematics_and_logic", "medicine_and_healthcare",
+            "finance_and_economics", "law_and_governance", "creative_arts_and_literature",
+            "visual_design_and_imaging", "cybersecurity_and_devops",
+            "natural_sciences_and_physics", "education_and_pedagogy"
+        ]
+        for f in expected:
+            self.assertIn(f, fields)
+            self.assertTrue(len(fields[f]["aliases"]) > 0)
+            self.assertIn("system_role", fields[f])
+
+    def test_fields_of_work_summary(self):
+        """Verifies summary string formatting for fields of work."""
+        summary = self.matrix.get_fields_summary()
+        self.assertIn("Software Engineering", summary)
+        self.assertIn("Medicine", summary)
+        self.assertIn("Law", summary)
+
+    def test_classify_field(self):
+        """Tests automatic domain classifier for varied user prompts."""
+        self.assertEqual(self.matrix.classify_field("Write a python script for sorting"), "software_engineering")
+        self.assertEqual(self.matrix.classify_field("Calculate calculus integral proof"), "mathematics_and_logic")
+        self.assertEqual(self.matrix.classify_field("Analyze clinical symptoms for disease"), "medicine_and_healthcare")
+        self.assertEqual(self.matrix.classify_field("Evaluate investing in stock market"), "finance_and_economics")
+        self.assertEqual(self.matrix.classify_field("Review this contracts statute"), "law_and_governance")
+
+    @patch("core.free_ai_matrix.requests.post")
+    def test_query_field_expert(self, mock_post):
+        """Tests querying a specialized field expert with expert persona."""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "choices": [{"message": {"content": "Clinical diagnosis completed, sir."}}]
+        }
+        mock_post.return_value = mock_resp
+
+        reply, label = self.matrix.query_field_expert("medicine", "Examine cardiac biomarkers")
+        self.assertIn("Clinical diagnosis completed, sir.", reply)
+        self.assertIn("Medicine, Healthcare", label)
+
+    def test_local_intelligence_fields_intent(self):
+        """Tests voice recognition of 'list fields of work' and domain expert queries."""
+        local_intel = LocalIntelligence()
+        handled, response = local_intel.evaluate_and_execute("list fields of work")
+        self.assertTrue(handled)
+        self.assertIn("specialized domain intelligence", response)
+        self.assertIn("Software Engineering", response)
+
     @patch.object(FreeAIMatrix, "query_provider")
     def test_task_orchestrator_tool_dispatch(self, mock_query):
         """Tests orchestrator tool dispatch for command_other_ai."""

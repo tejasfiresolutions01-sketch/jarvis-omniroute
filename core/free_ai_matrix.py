@@ -1,17 +1,19 @@
 """
 J.A.R.V.I.S. Universal Free AI Matrix
-Integrates and coordinates all providers in the OmniRoute Free Providers catalog:
-- duckduckgo-web (ddgw)
-- aihorde (horde)
-- cloudflare-playground (cfp)
-- freetheai (fta)
-- freebuff (fb)
-- opencode (oc)
-- freemodel-dev (fmd)
-- uncloseai (unc)
-- free-ai & freeinference
-- openai (free tier bridge)
-Plus global frontier zero-cost routes (OpenAI, Claude, Mistral, DeepSeek, Llama, Qwen, Gemini).
+Integrates and coordinates:
+1. Multi-Disciplinary Domain Experts across every field of work:
+   - Software Engineering & Architecture
+   - Mathematics & Algorithmic Logic
+   - Medicine, Healthcare & Life Sciences
+   - Finance, Economics & Quantitative Analysis
+   - Law, Legal Jurisprudence & Regulatory Compliance
+   - Creative Writing, Literature & Storytelling
+   - Visual Arts & Graphic Design (AI Horde Diffusion)
+   - Cybersecurity & Systems Defense
+   - Physics, Astronomy & Natural Sciences
+   - Education, Pedagogy & Socratic Tutoring
+2. All 11 active OmniRoute Free Providers (ddgw, aihorde, cfp, fta, fb, oc, fmd, unc, free-ai, freeinference, openai).
+3. Global Frontier Free Zero-Cost Gateways (OpenAI, Claude, Mistral, DeepSeek, Llama, Qwen, Gemini).
 Strictly 100% free-tier, zero-cost options only.
 """
 
@@ -25,8 +27,82 @@ import config
 class FreeAIMatrix:
     """
     Universal Free Multi-Model AI Dispatcher.
-    Integrates all providers in OmniRoute's free provider roster and global zero-cost endpoints.
+    Specializes across every field of work and integrates all free AI providers globally.
     """
+
+    # Comprehensive Taxonomy of Multi-Disciplinary Fields of Work
+    FIELDS_OF_WORK = {
+        "software_engineering": {
+            "name": "Software Engineering & Architecture",
+            "aliases": ["code", "coding", "software", "programming", "dev", "developer", "bug", "debugging", "python", "javascript", "script", "api"],
+            "lead_model": "ddgw/tinfoil/gpt-oss-120b",
+            "fallback_model": "ddgw/mistral-small-2603",
+            "system_role": "You are J.A.R.V.I.S. operating as Principal Software Engineer & Systems Architect to Tony Stark. Provide precise, production-grade technical counsel."
+        },
+        "mathematics_and_logic": {
+            "name": "Mathematics & Algorithmic Logic",
+            "aliases": ["math", "mathematics", "logic", "algorithms", "proof", "proofs", "calculus", "algebra"],
+            "lead_model": "ddgw/tinfoil/gpt-oss-120b",
+            "fallback_model": "ddgw/gpt-5.4-mini",
+            "system_role": "You are J.A.R.V.I.S. operating as Fields Medalist Mathematician & Formal Logician to Tony Stark. Deliver rigorous algorithmic and mathematical reasoning."
+        },
+        "medicine_and_healthcare": {
+            "name": "Medicine, Healthcare & Life Sciences",
+            "aliases": ["medicine", "medical", "health", "healthcare", "biology", "clinical", "pharma", "doctor", "symptom", "symptoms"],
+            "lead_model": "ddgw/claude-haiku-4-5",
+            "fallback_model": "ddgw/mistral-small-2603",
+            "system_role": "You are J.A.R.V.I.S. operating as Chief Medical Officer & Clinical Bioscientist to Tony Stark. Synthesize clinical, pharmacological, and physiological analysis."
+        },
+        "finance_and_economics": {
+            "name": "Finance, Economics & Quantitative Analysis",
+            "aliases": ["finance", "financial", "economics", "economy", "investing", "market", "accounting", "stock", "crypto"],
+            "lead_model": "ddgw/gpt-5.4-mini",
+            "fallback_model": "ddgw/mistral-small-2603",
+            "system_role": "You are J.A.R.V.I.S. operating as Chief Financial Strategist & Quantitative Analyst to Tony Stark. Deliver high-fidelity market and fiscal analysis."
+        },
+        "law_and_governance": {
+            "name": "Law, Legal Jurisprudence & Regulatory Compliance",
+            "aliases": ["law", "legal", "compliance", "regulatory", "contracts", "governance", "statute", "attorney"],
+            "lead_model": "ddgw/claude-haiku-4-5",
+            "fallback_model": "ddgw/gpt-5.4-mini",
+            "system_role": "You are J.A.R.V.I.S. operating as Senior Corporate Counsel & Legal Jurisprudence Scholar to Tony Stark. Provide astute statutory and contractual analysis."
+        },
+        "creative_arts_and_literature": {
+            "name": "Creative Writing, Literature & Storytelling",
+            "aliases": ["creative", "writing", "literature", "poetry", "story", "poem", "novel", "prose", "screenplay", "manuscript"],
+            "lead_model": "ddgw/claude-haiku-4-5",
+            "fallback_model": "ddgw/mistral-small-2603",
+            "system_role": "You are J.A.R.V.I.S. operating as Poet Laureate & Master Literary Stylist to Tony Stark. Craft vivid, articulate, and evocative prose."
+        },
+        "visual_design_and_imaging": {
+            "name": "Visual Arts & Graphic Design",
+            "aliases": ["image", "art", "design", "illustration", "visual", "picture", "photo"],
+            "lead_model": "aihorde/SDXL 1.0",
+            "fallback_model": "aihorde/Realistic Vision",
+            "system_role": "You are J.A.R.V.I.S. operating as Master Creative Director & Visual Concept Designer to Tony Stark."
+        },
+        "cybersecurity_and_devops": {
+            "name": "Cybersecurity & Systems Defense",
+            "aliases": ["security", "cybersecurity", "infosec", "devops", "cloud", "sysadmin", "firewall", "hacker"],
+            "lead_model": "ddgw/mistral-small-2603",
+            "fallback_model": "ddgw/tinfoil/gpt-oss-120b",
+            "system_role": "You are J.A.R.V.I.S. operating as Elite Cyber Defense & Offensive Security Specialist to Tony Stark. Provide impenetrable threat analysis."
+        },
+        "natural_sciences_and_physics": {
+            "name": "Physics, Astronomy & Natural Sciences",
+            "aliases": ["physics", "science", "astronomy", "chemistry", "quantum", "gravity", "space"],
+            "lead_model": "ddgw/tinfoil/gpt-oss-120b",
+            "fallback_model": "ddgw/claude-haiku-4-5",
+            "system_role": "You are J.A.R.V.I.S. operating as Theoretical Physicist & Frontier Scientist to Tony Stark. Deliver profound empirical and theoretical insights."
+        },
+        "education_and_pedagogy": {
+            "name": "Education, Pedagogy & Socratic Tutoring",
+            "aliases": ["education", "teaching", "tutoring", "pedagogy", "explain", "learn", "study"],
+            "lead_model": "ddgw/gpt-5.4-mini",
+            "fallback_model": "ddgw/claude-haiku-4-5",
+            "system_role": "You are J.A.R.V.I.S. operating as Distinguished Socratic Professor & Educator to Tony Stark. Break complex doctrines down with unmatched clarity."
+        }
+    }
 
     # Comprehensive OmniRoute Free Providers Catalog
     OMNIROUTE_FREE_PROVIDERS = {
@@ -198,6 +274,64 @@ class FreeAIMatrix:
         self.omniroute_api_key = config.OMNIROUTE_API_KEY
         self.timeout = 7.0
 
+    def list_fields_of_work(self) -> Dict[str, Dict[str, Any]]:
+        """Returns the full taxonomy of work fields and lead models."""
+        return self.FIELDS_OF_WORK
+
+    def get_fields_summary(self) -> str:
+        """Returns a concise spoken overview of all supported fields of work."""
+        names = [f["name"] for f in self.FIELDS_OF_WORK.values()]
+        return f"I am equipped with specialized domain intelligence across all {len(names)} major fields of work, sir: {', '.join(names)}."
+
+    def classify_field(self, prompt: str) -> str:
+        """Automatically determines the domain of work from user intent."""
+        lower = prompt.lower()
+        best_field = "software_engineering"
+        best_score = 0
+        for f_key, info in self.FIELDS_OF_WORK.items():
+            score = 0
+            for alias in info["aliases"]:
+                if re.search(rf"\b{re.escape(alias)}\b", lower):
+                    score += len(alias) # Longer specific keywords (e.g. 'symptoms', 'calculus') carry higher weight
+            if score > best_score:
+                best_score = score
+                best_field = f_key
+        return best_field
+
+    def query_field_expert(self, field_key_or_alias: str, prompt: str) -> Tuple[str, str]:
+        """
+        Routes the directive to a specialized domain model equipped with an expert role persona.
+        """
+        clean_key = field_key_or_alias.lower().strip()
+        field_info = None
+
+        # Direct match or alias match
+        for k, info in self.FIELDS_OF_WORK.items():
+            if clean_key == k or clean_key in info["aliases"] or clean_key in info["name"].lower():
+                field_info = info
+                break
+
+        if not field_info:
+            detected_key = self.classify_field(prompt)
+            field_info = self.FIELDS_OF_WORK.get(detected_key, self.FIELDS_OF_WORK["software_engineering"])
+
+        # Execute query with field expert persona
+        lead_model = field_info["lead_model"]
+        system_role = field_info["system_role"]
+
+        content = self._call_omniroute(lead_model, prompt, system_prompt=system_role)
+        if not content and "fallback_model" in field_info:
+            content = self._call_omniroute(field_info["fallback_model"], prompt, system_prompt=system_role)
+
+        if content:
+            clean_text = self._sanitize_for_voice(content)
+            label = f"{field_info['name']} ({lead_model})"
+            return f"According to our {field_info['name']} specialist: {clean_text}", label
+
+        # Fallback to general auto cascade
+        fallback_text, fallback_label = self.query_auto(prompt)
+        return f"Sir, specialized {field_info['name']} channels routed through {fallback_label}: {fallback_text}", fallback_label
+
     def list_supported_ais(self) -> Dict[str, Any]:
         """Returns catalog of all supported global AI families and free tiers."""
         return {
@@ -367,13 +501,17 @@ class FreeAIMatrix:
 
     def query_provider(self, provider: str, prompt: str) -> Tuple[str, str]:
         """
-        Queries a specific AI provider family (openai, claude, mistral, deepseek, llama, qwen, gemini,
-        or OmniRoute free providers like ddgw, cfp, fta, fb, oc, fmd, unc).
+        Queries a specific AI provider family, domain field of work, or OmniRoute free provider.
         Returns (spoken_reply, provider_label).
         """
         p_clean = provider.lower().strip()
 
-        # Check if the query specifically targets an OmniRoute provider alias or key
+        # Check if targeting a field of work
+        for f_key, f_info in self.FIELDS_OF_WORK.items():
+            if p_clean in [f_key, f_info["name"].lower()] or p_clean in f_info["aliases"]:
+                return self.query_field_expert(f_key, prompt)
+
+        # Check if targeting an OmniRoute free provider
         for k, info in self.OMNIROUTE_FREE_PROVIDERS.items():
             if p_clean in [k, info["alias"]] or k in p_clean:
                 return self.query_omniroute_provider(k, prompt)
