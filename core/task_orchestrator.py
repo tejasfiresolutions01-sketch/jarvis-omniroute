@@ -21,6 +21,7 @@ from tools.git_controller import git_controller
 from tools.clipboard_sentinel import clipboard_sentinel
 from tools.system_optimizer import system_optimizer
 from tools.screen_reader import screen_reader
+from tools.display_controller import display_controller
 from core.schedule_manager import schedule_manager
 from core.online_intelligence import online_intelligence
 from core.vector_memory import vector_memory
@@ -80,7 +81,12 @@ class TaskOrchestrator:
         # Context-Aware Optical Screen Reader & OCR Intelligence
         "read_screen": lambda: screen_reader.read_screen_text() or "No legible text resolved on display.",
         "read_active_window": lambda: screen_reader.read_active_window_text() or "No legible text resolved in active window.",
-        "analyze_screen": lambda query="Explain what is visible on screen": screen_reader.analyze_screen(str(query))
+        "analyze_screen": lambda query="Explain what is visible on screen": screen_reader.analyze_screen(str(query)),
+        # Adaptive System Display & Ambient Night Shield Controller
+        "set_night_shield": lambda enabled=True, warmth=0.70: display_controller.enable_night_shield(float(warmth)) if enabled else display_controller.disable_night_shield(),
+        "set_display_brightness": lambda percent=80: display_controller.set_brightness(int(percent)),
+        "adaptive_ambient_display": lambda: display_controller.apply_adaptive_ambient(),
+        "display_status": lambda: display_controller.format_status_summary()
     }
 
     SYSTEM_PROMPT = (
@@ -131,7 +137,11 @@ class TaskOrchestrator:
         "- top_processes(limit=5)\n"
         "- read_screen()\n"
         "- read_active_window()\n"
-        "- analyze_screen(query='what is on my screen')\n\n"
+        "- analyze_screen(query='what is on my screen')\n"
+        "- set_night_shield(enabled=True, warmth=0.70)\n"
+        "- set_display_brightness(percent=80)\n"
+        "- adaptive_ambient_display()\n"
+        "- display_status()\n\n"
         "Guidelines:\n"
         "1. For multi-step tasks, emit all necessary CALL lines in logical sequence.\n"
         "2. If no tools are required, answer directly with authentic British butler cadence.\n"
@@ -257,7 +267,7 @@ class TaskOrchestrator:
                     summaries.append(f"{out}")
                 elif tool in ["git_diff", "git_log"]:
                     summaries.append(f"{str(out)[:120]}")
-                elif tool in ["explain_clipboard", "fix_clipboard_code", "save_clipboard_to_memory", "optimize_system", "top_processes", "read_screen", "read_active_window", "analyze_screen"]:
+                elif tool in ["explain_clipboard", "fix_clipboard_code", "save_clipboard_to_memory", "optimize_system", "top_processes", "read_screen", "read_active_window", "analyze_screen", "set_night_shield", "set_display_brightness", "adaptive_ambient_display", "display_status"]:
                     summaries.append(f"{out}")
                 else:
                     summaries.append(f"{tool} completed: {str(out)[:100]}")

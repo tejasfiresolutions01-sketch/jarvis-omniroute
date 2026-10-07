@@ -326,6 +326,52 @@ class LocalIntelligence:
             return True, screen_reader.analyze_screen("Diagnose and explain the error or traceback currently shown on screen")
 
         # ─────────────────────────────────────────────────────────────────────
+        # 5h. Adaptive System Display & Ambient Night Shield Controller
+        # ─────────────────────────────────────────────────────────────────────
+        if any(p in clean_lower for p in [
+            "enable night shield", "turn on night shield", "activate night shield",
+            "night light on", "turn on night mode", "blue light filter", "enable night mode"
+        ]):
+            from tools.display_controller import display_controller
+            return True, display_controller.enable_night_shield()
+
+        if any(p in clean_lower for p in [
+            "disable night shield", "turn off night shield", "deactivate night shield",
+            "night light off", "turn off night mode", "daylight mode", "reset display color"
+        ]):
+            from tools.display_controller import display_controller
+            return True, display_controller.disable_night_shield()
+
+        if any(p in clean_lower for p in [
+            "adaptive display", "auto ambient display", "ambient night cycle",
+            "adaptive ambient", "adjust display for time", "sync screen light"
+        ]):
+            from tools.display_controller import display_controller
+            return True, display_controller.apply_adaptive_ambient()
+
+        if any(p in clean_lower for p in [
+            "display status", "screen brightness status", "screen status", "display telemetry"
+        ]):
+            from tools.display_controller import display_controller
+            return True, display_controller.format_status_summary()
+
+        m_bright = re.search(r"(?:set|change|adjust)\s+(?:display\s+|screen\s+)?brightness\s+to\s+(\d+)", clean_lower)
+        if m_bright:
+            from tools.display_controller import display_controller
+            val = int(m_bright.group(1))
+            return True, display_controller.set_brightness(val)
+
+        if "dim screen" in clean_lower or "dim display" in clean_lower:
+            from tools.display_controller import display_controller
+            curr = display_controller.get_brightness()
+            return True, display_controller.set_brightness(max(15, curr - 25))
+
+        if "brighten screen" in clean_lower or "brighten display" in clean_lower:
+            from tools.display_controller import display_controller
+            curr = display_controller.get_brightness()
+            return True, display_controller.set_brightness(min(100, curr + 25))
+
+        # ─────────────────────────────────────────────────────────────────────
         # 6. Time & Date Directives
         # ─────────────────────────────────────────────────────────────────────
         if any(p in clean_lower for p in ["what time is it", "current time", "what's the time", "whats the time", "tell me the time", "time now"]):
