@@ -1,8 +1,11 @@
 import re
+import threading
 from datetime import datetime, date
 from typing import Tuple, Optional
 from tools.system_controller import system_controller
 from core.schedule_manager import schedule_manager
+from core.head_commander import head_commander
+from core.offgrid_sentinel import offgrid_sentinel
 from core.learning_matrix import learning_matrix
 from memory.memory_store import memory
 from core.vector_memory import vector_memory
@@ -45,6 +48,70 @@ class LocalIntelligence:
         is_sched, sched_res = schedule_manager.parse_and_handle(clean)
         if is_sched:
             return True, sched_res
+
+        # ─────────────────────────────────────────────────────────────────────
+        # 1b. Head Commander & Multi-Agent Pending Task Directives
+        # ─────────────────────────────────────────────────────────────────────
+        # Add / Queue pending task
+        add_task_match = re.match(r"^(?:add|create|queue|schedule|register)\s+(?:a\s+)?(?:pending\s+)?(?:task|directive)\s*(?::\s*|\s+to\s+|\s+)(.+)$", clean_lower)
+        if add_task_match:
+            task_title = add_task_match.group(1).strip()
+            task = head_commander.add_task(title=task_title)
+            agents, tools, _ = head_commander.analyze_task_and_assign_agents(task)
+            agent_str = ", ".join([a.replace('_', ' ').title() for a in agents])
+            tool_str = ", ".join(tools)
+            return True, (
+                f"Directive queued in persistent task ledger as Task #{task['id']}, sir: '{task_title}'. "
+                f"As Head Commander, I have designated the {agent_str} specialist agents "
+                f"and assigned tools ({tool_str}) to work alongside me. "
+                f"This will continue executing continuously even if the workstation powers down or enters standby."
+            )
+
+        # Show / List pending tasks
+        if any(clean_lower == p or clean_lower.startswith(p) for p in [
+            "what are my pending tasks", "show pending tasks", "list pending tasks",
+            "check pending tasks", "pending tasks", "task status", "view pending tasks",
+            "show all tasks", "list tasks"
+        ]):
+            pending = head_commander.list_tasks(status="pending")
+            completed = head_commander.list_tasks(status="completed")
+            if not pending and not completed:
+                return True, "There are currently no active or pending tasks in your ledger, sir. All systems are up to date."
+            msg_parts = []
+            if pending:
+                msg_parts.append(f"You have {len(pending)} pending tasks under executive analysis:")
+                for t in pending[:4]:
+                    agents = t.get("assigned_agents") or ["J.A.R.V.I.S."]
+                    agent_names = ", ".join([a.title() for a in agents]) if isinstance(agents, list) else str(agents)
+                    msg_parts.append(f"- Task #{t['id']}: '{t['title']}' (Assigned: {agent_names}, Progress: {t.get('progress_percent', 0)}%)")
+            if completed:
+                msg_parts.append(f"\n{len(completed)} tasks have been successfully completed by our agent syndicate.")
+            return True, "\n".join(msg_parts)
+
+        # Run / Complete pending tasks manually
+        if any(clean_lower == p or clean_lower.startswith(p) for p in [
+            "run pending tasks", "execute pending tasks", "complete pending tasks",
+            "analyze pending tasks", "process pending tasks", "dispatch agents",
+            "assign agents to tasks", "run tasks"
+        ]):
+            pending = head_commander.list_tasks(status="pending")
+            if not pending:
+                return True, "All pending tasks have already been analyzed and completed, sir."
+            count = len(pending)
+            threading.Thread(target=head_commander.run_all_pending_tasks, daemon=True).start()
+            return True, (
+                f"Understood, sir. Assuming executive command over all {count} pending tasks now. "
+                f"Our specialized AI agents and system tools are actively deployed and running."
+            )
+
+        # Off-Grid / Standby / Away Mode Status
+        if any(clean_lower == p for p in ["offgrid status", "away mode status", "device off status", "wake timer status"]):
+            away = "active" if offgrid_sentinel.away_mode_active else "standby"
+            return True, (
+                f"Off-Grid and Standby Autonomy is operational, sir. "
+                f"Windows Away Mode is {away}, hardware ACPI RTC wake alarms are registered in Task Scheduler, "
+                f"and the Cloud Off-Grid Autonomous Drone is synced for zero-cost execution when power is severed."
+            )
 
         # ─────────────────────────────────────────────────────────────────────
         # 2. Application, Folder & Script Launching

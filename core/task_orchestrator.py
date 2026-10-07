@@ -157,6 +157,13 @@ class TaskOrchestrator:
         Determines whether a directive involves multi-step reasoning, external web search, or file tool action.
         """
         lower = prompt.lower()
+        if any(lower.startswith(p) for p in [
+            "add pending task", "queue task", "create task", "add task",
+            "what are my pending tasks", "show pending tasks", "list pending tasks",
+            "run pending tasks", "execute pending tasks", "complete pending tasks"
+        ]):
+            return False
+
         # Check compound task conjunctions
         has_compound = any(f" {k} " in f" {lower} " for k in ["and", "then", "also", "after", "plus"])
         # Check explicit tool actions requiring external tools

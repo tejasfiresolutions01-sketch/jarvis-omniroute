@@ -18,6 +18,8 @@ memory/*.db
 memory/*.sqlite
 memory/*.sqlite3
 memory/*.json
+data/
+.github/
 *.db
 *.sqlite
 *.sqlite3

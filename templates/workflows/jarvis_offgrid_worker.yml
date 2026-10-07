@@ -1,0 +1,36 @@
+name: J.A.R.V.I.S. Off-Grid Autonomous Cloud Worker
+
+on:
+  schedule:
+    - cron: '*/30 * * * *' # Runs every 30 minutes in the cloud
+  workflow_dispatch: # Can be triggered manually
+  push:
+    paths:
+      - 'memory/pending_tasks.json'
+
+jobs:
+  offgrid_worker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: pip install requests
+
+      - name: Execute Autonomous Pending Tasks
+        run: python tools/offgrid_cloud_worker.py
+
+      - name: Commit & Push Completed Deliverables
+        run: |
+          git config --global user.name 'J.A.R.V.I.S. Cloud Drone'
+          git config --global user.email 'jarvis-drone@stark.industries'
+          git add memory/pending_tasks.json data/completed_tasks/
+          git diff --quiet && git diff --staged --quiet || (git commit -m 'feat(tasks): offgrid cloud autonomous completion' && git push)

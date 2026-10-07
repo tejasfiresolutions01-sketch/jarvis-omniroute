@@ -50,14 +50,22 @@ LOGS_DIR = BASE_DIR / "logs"
 # Database Paths
 MEMORY_DB_PATH = MEMORY_DIR / "jarvis_memory.db"
 SCHEDULE_DB_PATH = MEMORY_DIR / "schedule.db"
+TASKS_DB_PATH = MEMORY_DIR / "tasks.db"
+PENDING_TASKS_SYNC_PATH = MEMORY_DIR / "pending_tasks.json"
+COMPLETED_TASKS_DIR = BASE_DIR / "data" / "completed_tasks"
 
 # Assets
 IRONMAN_ICO_PATH = ASSETS_DIR / "ironman.ico"
+
+# Autonomy, Away Mode & Off-Grid Settings
+AWAY_MODE_ENABLED = os.getenv("AWAY_MODE_ENABLED", "true").lower() in ("true", "1", "yes")
+OFFGRID_SYNC_ENABLED = os.getenv("OFFGRID_SYNC_ENABLED", "true").lower() in ("true", "1", "yes")
 
 # Ensure runtime directories exist
 MEMORY_DIR.mkdir(parents=True, exist_ok=True)
 ASSETS_DIR.mkdir(parents=True, exist_ok=True)
 LOGS_DIR.mkdir(parents=True, exist_ok=True)
+COMPLETED_TASKS_DIR.mkdir(parents=True, exist_ok=True)
 
 # HUD Settings
 HUD_WINDOW_TITLE = "J.A.R.V.I.S. // STARK INDUSTRIES TACTICAL HUD"
