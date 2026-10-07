@@ -229,19 +229,29 @@ class LocalIntelligence:
             return True, f"Web content from {url}, sir:\n{content}"
 
         # ─────────────────────────────────────────────────────────────────────
-        # 5a-2. Command Other AI Models & Multi-Model Gateway
+        # 5a-2. Command Universal Free AI Matrix (All Global Models at Zero Cost)
         # ─────────────────────────────────────────────────────────────────────
+        if any(p in clean_lower for p in [
+            "list supported ais", "list supported ai", "what ais do you support",
+            "what ai do you support", "which ais can you command", "which ai can you command",
+            "show supported ais", "supported ai models", "what external ais can you command"
+        ]):
+            from core.free_ai_matrix import free_ai_matrix
+            catalog = free_ai_matrix.list_supported_ais()
+            lines = [f"{prov}: {', '.join(models)}" for prov, models in catalog.items()]
+            return True, "I can command all major frontier AI models globally at zero cost, sir: " + "; ".join(lines) + "."
+
         ai_match = re.search(
-            r"^(?:ask|use|command)\s+(openai|gemini|mistral|claude|other ai|another ai|external ai)\s*(?:to|about|for)?\s*[:\-]?\s*(.+)$",
+            r"^(?:ask|use|command)\s+(openai|gpt|claude|anthropic|mistral|deepseek|llama|meta|qwen|alibaba|gemini|google|gemma|other ai|another ai|external ai)\s*(?:to|about|for)?\s*[:\-]?\s*(.+)$",
             clean,
             re.IGNORECASE
         )
         if ai_match:
             provider = ai_match.group(1).strip()
             sub_prompt = ai_match.group(2).strip()
-            from core.online_intelligence import online_intelligence
-            ai_res = online_intelligence.query_specific_model(sub_prompt, model_name=provider)
-            return True, ai_res
+            from core.free_ai_matrix import free_ai_matrix
+            spoken_res, _ = free_ai_matrix.query_provider(provider, sub_prompt)
+            return True, spoken_res
 
         # ─────────────────────────────────────────────────────────────────────
         # 5b. OmniRoute Multi-Provider Gateway Status
