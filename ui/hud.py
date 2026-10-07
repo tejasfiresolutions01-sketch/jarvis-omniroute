@@ -6,13 +6,15 @@ import time
 from core.brain import brain
 from core.voice import speak, stop_speaking
 from core.listener import listener
+from tools.global_hotkey import global_hotkey
 import config
 
 class TacticalHUD:
     """
     Mark-III Stark Industries Holographic Tactical HUD.
     Features glowing arc reactor audio visualizer, live console,
-    hands-free voice wake-word toggle, barge-in silence controls, and directive transmitter.
+    hands-free voice wake-word toggle, barge-in silence controls, stealth mode,
+    and system-wide global hotkey summoning (Ctrl+Alt+J / Ctrl+Shift+J).
     """
 
     def __init__(self):
@@ -20,6 +22,12 @@ class TacticalHUD:
         self.root.title(config.HUD_WINDOW_TITLE)
         self.root.geometry("920x680")
         self.root.configure(bg="#020813")
+
+        # Set application icon if available
+        try:
+            self.root.iconbitmap("assets/ironman.ico")
+        except Exception:
+            pass
 
         # Visual styling
         self.cyan = "#00e5ff"
@@ -35,6 +43,12 @@ class TacticalHUD:
         # Keyboard Shortcut: Escape to immediately interrupt speech
         self.root.bind("<Escape>", lambda e: self.silence_vocalizer())
 
+        # Intercept window close (X button): minimize to background stealth mode instead of exiting
+        self.root.protocol("WM_DELETE_WINDOW", self.enter_stealth_mode)
+
+        # Start system-wide global hotkey listener (Ctrl+Alt+J / Ctrl+Shift+J)
+        global_hotkey.start(callback=self.summon_from_hotkey)
+
     def _build_ui(self):
         # Header Frame
         hdr = tk.Frame(self.root, bg="#020813", pady=10)
@@ -46,7 +60,7 @@ class TacticalHUD:
         sub_frame = tk.Frame(hdr, bg="#020813")
         sub_frame.pack(pady=4)
 
-        sub = tk.Label(sub_frame, text="BUTLER AGENDA, AUTONOMY & MULTIMODAL PERCEPTION", font=("Segoe UI", 9), fg=self.gold, bg="#020813")
+        sub = tk.Label(sub_frame, text="BUTLER AGENDA, AUTONOMY & GLOBAL SUMMON (Ctrl+Alt+J)", font=("Segoe UI", 9), fg=self.gold, bg="#020813")
         sub.pack(side="left", padx=10)
 
         # Wake Word Toggle Button
@@ -70,7 +84,7 @@ class TacticalHUD:
         self.console = tk.Text(self.root, height=12, bg=self.dark_blue, fg="#ffffff", font=("Consolas", 10), insertbackground=self.cyan, relief="flat", padx=10, pady=10)
         self.console.pack(fill="both", expand=True, padx=20, pady=8)
         self.console.insert("end", "[J.A.R.V.I.S. Mark-III]: Core initialized. All offline and online subroutines armed.\n")
-        self.console.insert("end", "[Audio Sentinel]: Hands-free wake word active. Say 'Hey Jarvis' or click 🎤.\n\n")
+        self.console.insert("end", "[Audio Sentinel]: Hands-free wake word active. Say 'Hey Jarvis' or press Ctrl+Alt+J.\n\n")
         self.console.config(state="disabled")
 
         # Controls & Input Frame
@@ -88,6 +102,21 @@ class TacticalHUD:
         # Transmit Button
         btn_send = tk.Button(inp_frame, text="TRANSMIT", font=("Segoe UI", 10, "bold"), fg=self.cyan, bg="#0c254c", activebackground=self.cyan, activeforeground="#000", relief="flat", padx=14, command=self.send_directive)
         btn_send.pack(side="left", padx=(0, 8))
+
+        # Stealth Mode Button (Minimizes HUD to background)
+        btn_stealth = tk.Button(
+            inp_frame,
+            text="👁 STEALTH",
+            font=("Segoe UI", 9, "bold"),
+            fg=self.gold,
+            bg="#1a1402",
+            activebackground=self.gold,
+            activeforeground="#000",
+            relief="flat",
+            padx=10,
+            command=self.enter_stealth_mode
+        )
+        btn_stealth.pack(side="right", padx=(0, 6))
 
         # Silence / Barge-In Button
         btn_silence = tk.Button(inp_frame, text="⏹ SILENCE", font=("Segoe UI", 9, "bold"), fg=self.red, bg="#26080b", activebackground=self.red, activeforeground="#fff", relief="flat", padx=10, command=self.silence_vocalizer)
@@ -164,10 +193,32 @@ class TacticalHUD:
 
         threading.Thread(target=_proc, daemon=True).start()
 
+    def enter_stealth_mode(self):
+        """Hides Tactical HUD to background stealth mode while services remain active."""
+        self.root.withdraw()
+        print("[Stealth Mode]: J.A.R.V.I.S. Tactical HUD minimized. Press Ctrl+Alt+J or say 'Hey Jarvis' to summon.")
+
+    def summon_from_hotkey(self):
+        """Callback triggered by Win32 global hotkey thread (Ctrl+Alt+J / Ctrl+Shift+J)."""
+        self.root.after(0, self.restore_hud)
+
+    def restore_hud(self):
+        """Restores and brings Tactical HUD to the foreground."""
+        self.root.deiconify()
+        self.root.lift()
+        self.root.attributes("-topmost", True)
+        self.root.after_idle(self.root.attributes, "-topmost", False)
+        self.root.focus_force()
+        self.entry.focus_set()
+        self.append_log("SYSTEM", "Tactical HUD summoned from stealth mode.")
+
     def run(self):
         # Start voice daemon on launch
         listener.start_wake_word_daemon(self.handle_voice_directive)
-        self.root.mainloop()
+        try:
+            self.root.mainloop()
+        finally:
+            global_hotkey.stop()
 
 def launch_hud():
     hud = TacticalHUD()

@@ -16,6 +16,7 @@ from tools.camera_tools import inspect_physical_camera
 from tools.weather_tools import get_weather
 from tools.briefing_tools import generate_executive_briefing
 from tools.gui_controller import gui_controller
+from tools.network_scanner import network_scanner
 from core.schedule_manager import schedule_manager
 from core.online_intelligence import online_intelligence
 from core.vector_memory import vector_memory
@@ -56,7 +57,9 @@ class TaskOrchestrator:
         # Semantic Vector Memory & Neural Recall (RAG)
         "store_memory": lambda content="", category="general": f"Stored memory #{vector_memory.store_memory(str(content), str(category))}",
         "recall_memory": lambda query="", category=None: vector_memory.recall_context(str(query), category=category) or "No matching memories located.",
-        "search_memory": lambda query="", category=None: json.dumps(vector_memory.semantic_search(str(query), category=category))
+        "search_memory": lambda query="", category=None: json.dumps(vector_memory.semantic_search(str(query), category=category)),
+        # Local LAN Perimeter & IoT Device Reconnaissance
+        "scan_perimeter": lambda: network_scanner.format_butler_perimeter_report()
     }
 
     SYSTEM_PROMPT = (
@@ -93,7 +96,8 @@ class TaskOrchestrator:
         "- open_and_type(app_name='notepad', text='content to type', save_filename='notes.txt')\n"
         "- store_memory(content='information to remember', category='preference|note|project|fact')\n"
         "- recall_memory(query='query to retrieve from long-term memory')\n"
-        "- search_memory(query='search query')\n\n"
+        "- search_memory(query='search query')\n"
+        "- scan_perimeter()\n\n"
         "Guidelines:\n"
         "1. For multi-step tasks, emit all necessary CALL lines in logical sequence.\n"
         "2. If no tools are required, answer directly with authentic British butler cadence.\n"
@@ -209,6 +213,8 @@ class TaskOrchestrator:
                     summaries.append(f"retrieved neural memory context: {str(out)[:140]}")
                 elif tool == "search_memory":
                     summaries.append(f"queried vector database with result: {str(out)[:140]}")
+                elif tool == "scan_perimeter":
+                    summaries.append("conducted a full perimeter sweep across local network nodes")
                 else:
                     summaries.append(f"{tool} completed: {str(out)[:100]}")
             else:

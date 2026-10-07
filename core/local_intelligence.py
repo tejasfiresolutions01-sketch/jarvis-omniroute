@@ -137,6 +137,23 @@ class LocalIntelligence:
             from tools.gui_controller import gui_controller
             return True, gui_controller.browser_action("refresh")
 
+        if any(p in clean_lower for p in ["stealth mode", "enter stealth mode", "hide hud", "minimize hud", "minimize to background"]):
+            import ctypes
+            user32 = ctypes.windll.user32
+            hwnd = user32.FindWindowW(None, config.HUD_WINDOW_TITLE)
+            if hwnd:
+                user32.ShowWindow(hwnd, 0) # SW_HIDE
+            return True, "Engaging background stealth mode, sir. The Tactical HUD is concealed. Press Ctrl+Alt+J or state 'Hey Jarvis' to summon me at any moment."
+
+        if any(p in clean_lower for p in ["show hud", "restore hud", "bring up hud", "open hud", "summon hud"]):
+            import ctypes
+            user32 = ctypes.windll.user32
+            hwnd = user32.FindWindowW(None, config.HUD_WINDOW_TITLE)
+            if hwnd:
+                user32.ShowWindow(hwnd, 9) # SW_RESTORE
+                user32.SetForegroundWindow(hwnd)
+            return True, "Tactical HUD restored and elevated to the foreground, sir."
+
         # ─────────────────────────────────────────────────────────────────────
         # 4b. Multimodal Screen & Webcam Vision (PHASE 3)
         # ─────────────────────────────────────────────────────────────────────
@@ -191,6 +208,17 @@ class LocalIntelligence:
         if any(p in clean_lower for p in ["omniroute status", "omniroute", "is omniroute running", "check omniroute", "omniroute gateway"]):
             from tools.omniroute_controller import omniroute_controller
             return True, omniroute_controller.get_butler_summary()
+
+        # ─────────────────────────────────────────────────────────────────────
+        # 5c. Local LAN Perimeter & IoT Reconnaissance
+        # ─────────────────────────────────────────────────────────────────────
+        if any(p in clean_lower for p in [
+            "scan network", "scan the network", "perimeter scan", "check perimeter",
+            "who is on the network", "who is on my wifi", "scan local network",
+            "network status", "ping gateway", "check network devices", "network perimeter"
+        ]):
+            from tools.network_scanner import network_scanner
+            return True, network_scanner.format_butler_perimeter_report()
 
         # ─────────────────────────────────────────────────────────────────────
         # 6. Time & Date Directives
