@@ -32,7 +32,7 @@ class OmniRouteController:
 
         start_time = time.time()
         try:
-            resp = requests.get(f"{self.base_url}/models", headers=headers, timeout=3.0)
+            resp = requests.get(f"{self.base_url}/models", headers=headers, timeout=5.0)
             latency_ms = round((time.time() - start_time) * 1000, 1)
 
             if resp.status_code == 200:
