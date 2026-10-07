@@ -185,6 +185,76 @@ class TestFreeAIMatrix(unittest.TestCase):
         self.assertIn("specialized domain intelligence", response)
         self.assertIn("Software Engineering", response)
 
+    def test_business_operations_catalog(self):
+        """Verifies all 9 requested business operations are cataloged with roles and models."""
+        ops = self.matrix.list_business_operations()
+        expected = [
+            "marketing", "lead_generation", "lead_verification",
+            "customer_acquisition", "customer_retention", "accounts_and_bookkeeping",
+            "stock_and_inventory", "document_generation", "problem_handling"
+        ]
+        for op in expected:
+            self.assertIn(op, ops)
+            self.assertTrue(len(ops[op]["aliases"]) > 0)
+            self.assertIn("system_role", ops[op])
+            self.assertIn("lead_model", ops[op])
+
+    def test_business_operations_summary(self):
+        """Verifies spoken overview of all 9 enterprise business operations."""
+        summary = self.matrix.get_business_summary()
+        self.assertIn("all 9 key business operations", summary)
+        self.assertIn("Growth Marketing", summary)
+        self.assertIn("Lead Generation", summary)
+        self.assertIn("Accounts, Bookkeeping", summary)
+        self.assertIn("Stock & Inventory", summary)
+        self.assertIn("Enterprise Document & Contract", summary)
+        self.assertIn("Business Problem Resolution", summary)
+
+    @patch("core.free_ai_matrix.requests.post")
+    def test_query_business_operation(self, mock_post):
+        """Tests executing a business operation directive with specialized executive role."""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "choices": [{"message": {"content": "Executive marketing campaign strategy formulated."}}]
+        }
+        mock_post.return_value = mock_resp
+
+        reply, label = self.matrix.query_business_operation("marketing", "Formulate Q4 SaaS campaign")
+        self.assertIn("Executive marketing campaign strategy formulated.", reply)
+        self.assertIn("Growth Marketing & Campaign Strategy AI", label)
+
+    def test_local_intelligence_business_listing_intent(self):
+        """Tests voice recognition of 'list business ais'."""
+        local_intel = LocalIntelligence()
+        handled, response = local_intel.evaluate_and_execute("list business ais")
+        self.assertTrue(handled)
+        self.assertIn("key business operations", response)
+        self.assertIn("Growth Marketing", response)
+
+    @patch.object(FreeAIMatrix, "query_business_operation")
+    def test_local_intelligence_business_operation_commands(self, mock_biz_query):
+        """Tests voice directive extraction for business AI operations."""
+        local_intel = LocalIntelligence()
+
+        test_commands = [
+            ("consult marketing ai on holiday campaigns", "marketing"),
+            ("ask lead generation ai to prospect B2B leads", "lead generation"),
+            ("use lead verification ai to score prospects", "lead verification"),
+            ("consult customer acquisition ai on sales funnels", "customer acquisition"),
+            ("ask customer retention ai to prevent churn", "customer retention"),
+            ("consult accounts ai on balance sheet", "accounts"),
+            ("ask stock management ai to check warehouse inventory", "stock management"),
+            ("run document generation ai to draft NDA contract", "document generation"),
+            ("consult problem handling ai on dispute resolution", "problem handling")
+        ]
+
+        for phrase, op in test_commands:
+            mock_biz_query.return_value = (f"Executive brief on {op}: Complete", op)
+            handled, resp = local_intel.evaluate_and_execute(phrase)
+            self.assertTrue(handled, f"Failed on business phrase: {phrase}")
+            self.assertIn(f"Executive brief on {op}: Complete", resp)
+
     @patch.object(FreeAIMatrix, "query_provider")
     def test_task_orchestrator_tool_dispatch(self, mock_query):
         """Tests orchestrator tool dispatch for command_other_ai."""
@@ -197,3 +267,4 @@ class TestFreeAIMatrix(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

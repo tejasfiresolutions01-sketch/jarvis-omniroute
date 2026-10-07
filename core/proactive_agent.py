@@ -9,7 +9,7 @@ Transforms J.A.R.V.I.S. from a passive listener into an attentive proactive butl
 import os
 import time
 import threading
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import Set, Dict, Any, Optional
 
 from core.schedule_manager import schedule_manager
@@ -85,6 +85,10 @@ class ProactiveButlerAgent:
                 # Parse event start time for today
                 parts = start_str.split(":")
                 ev_time = now.replace(hour=int(parts[0]), minute=int(parts[1]), second=0, microsecond=0)
+                if (ev_time - now).total_seconds() < -43200:
+                    ev_time += timedelta(days=1)
+                elif (ev_time - now).total_seconds() > 43200:
+                    ev_time -= timedelta(days=1)
                 diff_minutes = (ev_time - now).total_seconds() / 60.0
 
                 # 1. Ten-minute advance warning (8.0 to 10.5 mins)

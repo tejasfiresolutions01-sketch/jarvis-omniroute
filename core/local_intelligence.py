@@ -232,6 +232,17 @@ class LocalIntelligence:
         # 5a-2. Command Universal Free AI Matrix (Global Models, OmniRoute Providers & Every Field of Work)
         # ─────────────────────────────────────────────────────────────────────
         if any(p in clean_lower for p in [
+            "list business operations", "list business ais", "list business ai",
+            "what business ais do you support", "what business ai do you support",
+            "what business ai do you have", "what business ais do you have",
+            "business ais", "business operations", "business ai",
+            "what business operations can you handle", "show business ais",
+            "business operations ai", "what business operations do you support"
+        ]):
+            from core.free_ai_matrix import free_ai_matrix
+            return True, free_ai_matrix.get_business_summary()
+
+        if any(p in clean_lower for p in [
             "list fields of work", "fields of work", "what fields of work",
             "what fields of work do you support", "what ai fields can you handle",
             "supported domains", "what domains do you support", "show fields of work"
@@ -255,6 +266,18 @@ class LocalIntelligence:
             catalog = free_ai_matrix.list_supported_ais()
             lines = [f"{prov}: {', '.join(models)}" for prov, models in catalog.items()]
             return True, "I can command all major frontier AI models globally at zero cost, sir: " + "; ".join(lines) + "."
+
+        business_match = re.search(
+            r"^(?:consult|ask|use|run|command)\s+(?:the\s+)?(marketing|campaign|lead generation|lead gen|lead verification|verify lead|customer acquisition|client acquisition|customer retention|churn|accounts|bookkeeping|invoicing|stock|inventory|stock management|document generation|draft contract|proposal|problem handling|dispute resolution)\s*(?:ai|expert|specialist|model)?\s*(?:to|about|for|on)?\s*[:\-]?\s*(.+)$",
+            clean,
+            re.IGNORECASE
+        )
+        if business_match:
+            op_name = business_match.group(1).strip()
+            sub_prompt = business_match.group(2).strip()
+            from core.free_ai_matrix import free_ai_matrix
+            spoken_res, _ = free_ai_matrix.query_business_operation(op_name, sub_prompt)
+            return True, spoken_res
 
         field_match = re.search(
             r"^(?:consult|ask|use|command)\s+(?:the\s+)?(software|coding|developer|code|math|mathematics|logic|algorithm|medical|medicine|health|doctor|clinical|finance|financial|economics|quant|investing|legal|law|compliance|attorney|contracts|creative|writing|poetry|literature|author|visual|design|image|art|illustration|security|cybersecurity|infosec|devops|sysadmin|physics|science|astronomy|quantum|education|pedagogy|teacher|tutor)\s*(?:expert|ai|specialist|model)?\s*(?:to|about|for|on)?\s*[:\-]?\s*(.+)$",
