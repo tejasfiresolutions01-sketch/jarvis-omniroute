@@ -5,6 +5,7 @@ from tools.system_controller import system_controller
 from core.schedule_manager import schedule_manager
 from core.learning_matrix import learning_matrix
 from memory.memory_store import memory
+from core.vector_memory import vector_memory
 import config
 
 class LocalIntelligence:
@@ -223,6 +224,33 @@ class LocalIntelligence:
 
         if any(p in clean_lower for p in ["start voice conversation", "voice conversation mode", "let's talk", "lets talk", "let's chat"]):
             return True, "Continuous voice conversation mode engaged, sir. I am listening continuously and will wait patiently for you to finish your statements."
+
+        # ─────────────────────────────────────────────────────────────────────
+        # 7b. Semantic Vector Memory & Long-Term Neural Recall (RAG)
+        # ─────────────────────────────────────────────────────────────────────
+        if any(p in clean_lower for p in ["clear all memories", "wipe memories", "clear memories", "reset memory"]):
+            count = vector_memory.clear_memories()
+            return True, f"All neural memories have been purged from long-term storage ({count} records wiped), sir."
+
+        if any(p in clean_lower for p in ["list memories", "show memories", "show my notes", "list my notes"]):
+            mems = vector_memory.semantic_search("note preference project", top_k=5, min_score=0.0)
+            if mems:
+                lines = [f"- [{m['category'].upper()}]: {m['content']}" for m in mems[:5]]
+                return True, f"Recent entries in your long-term neural recall database, sir:\n" + "\n".join(lines)
+            return True, "No long-term memories or notes are currently indexed in the database, sir."
+
+        mem_action, mem_target, mem_content = vector_memory.parse_memory_directive(clean)
+        if mem_action == "store" and mem_content:
+            mem_id = vector_memory.store_memory(mem_content, category=mem_target or "general")
+            return True, f"Memory committed to long-term neural recall under '{mem_target}' (#{mem_id}), sir: \"{mem_content}\""
+
+        elif mem_action == "recall" and mem_target:
+            matches = vector_memory.semantic_search(mem_target, top_k=3, min_score=0.15)
+            if matches:
+                formatted_items = "\n".join([f"- [{m['category'].upper()} | Confidence {int(m['score']*100)}%]: {m['content']}" for m in matches])
+                return True, f"According to your long-term neural memory records, sir:\n{formatted_items}"
+            else:
+                return True, f"I could not locate any specific records matching '{mem_target}' in your long-term neural memory, sir."
 
         # ─────────────────────────────────────────────────────────────────────
         # 8. Butler Etiquette & Identity Directives

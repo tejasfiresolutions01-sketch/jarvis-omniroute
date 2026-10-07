@@ -14,6 +14,7 @@ from core.local_intelligence import local_intelligence
 from core.online_intelligence import online_intelligence
 from core.task_orchestrator import task_orchestrator
 from memory.memory_store import memory
+from core.vector_memory import vector_memory
 from tools.system_controller import system_controller
 import config
 
@@ -111,20 +112,24 @@ class JarvisBrain:
             complex_res = task_orchestrator.execute_complex_task(clean_prompt)
             if complex_res:
                 memory.log_interaction("JARVIS (Task Orchestrator)", complex_res)
+                vector_memory.index_interaction(clean_prompt, complex_res)
                 return enforce_single_question(complex_res)
 
         # 10b. Local Offline Execution Matrix (ZERO LATENCY for single commands)
-        # Handles schedule additions, schedule queries, application launches, volume, vitals, time, date
+        # Handles schedule additions, schedule queries, application launches, volume, vitals, time, date, memories
         is_handled_locally, local_res = local_intelligence.evaluate_and_execute(clean_prompt)
         if is_handled_locally:
             memory.log_interaction("JARVIS (Local Core)", local_res)
+            vector_memory.index_interaction(clean_prompt, local_res)
             return enforce_single_question(local_res)
 
-        # 11. Online Cognitive Reasoning (OmniRoute / Cloud AI)
+        # 11. Online Cognitive Reasoning with Long-Term Neural RAG (OmniRoute / Cloud AI)
         redacted_prompt = credential_guardian.redact(clean_prompt)
-        online_res = online_intelligence.query(redacted_prompt)
+        rag_context = vector_memory.recall_context(clean_prompt)
+        online_res = online_intelligence.query(redacted_prompt, context=rag_context)
         if online_res:
             memory.log_interaction("JARVIS (Online Core)", online_res)
+            vector_memory.index_interaction(clean_prompt, online_res)
             return enforce_single_question(online_res)
 
         # 12. Graceful Offline Butler Fallback (When no cloud model is reached)
@@ -133,6 +138,7 @@ class JarvisBrain:
             f"all local butler subroutines, schedule controls, and device automations remain fully active at your command."
         )
         memory.log_interaction("JARVIS (Butler Core)", fallback_msg)
+        vector_memory.index_interaction(clean_prompt, fallback_msg)
         return enforce_single_question(fallback_msg)
 
 # Global singleton

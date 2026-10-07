@@ -18,6 +18,7 @@ from tools.briefing_tools import generate_executive_briefing
 from tools.gui_controller import gui_controller
 from core.schedule_manager import schedule_manager
 from core.online_intelligence import online_intelligence
+from core.vector_memory import vector_memory
 import config
 
 class TaskOrchestrator:
@@ -51,7 +52,11 @@ class TaskOrchestrator:
         "keyboard_hotkey": lambda keys="": gui_controller.keyboard_hotkey(*[k.strip() for k in keys.split(",")]) if isinstance(keys, str) else gui_controller.keyboard_hotkey(*keys),
         "window_snap": lambda direction="": gui_controller.window_snap(str(direction)),
         "browser_action": lambda action="": gui_controller.browser_action(str(action)),
-        "open_and_type": lambda app_name="", text="", save_filename=None: gui_controller.open_and_type(str(app_name), str(text), save_filename)
+        "open_and_type": lambda app_name="", text="", save_filename=None: gui_controller.open_and_type(str(app_name), str(text), save_filename),
+        # Semantic Vector Memory & Neural Recall (RAG)
+        "store_memory": lambda content="", category="general": f"Stored memory #{vector_memory.store_memory(str(content), str(category))}",
+        "recall_memory": lambda query="", category=None: vector_memory.recall_context(str(query), category=category) or "No matching memories located.",
+        "search_memory": lambda query="", category=None: json.dumps(vector_memory.semantic_search(str(query), category=category))
     }
 
     SYSTEM_PROMPT = (
@@ -85,7 +90,10 @@ class TaskOrchestrator:
         "- keyboard_hotkey(keys='ctrl,s')\n"
         "- window_snap(direction='left|right|maximize|minimize|desktop')\n"
         "- browser_action(action='new_tab|close_tab|reopen_tab|refresh|address_bar')\n"
-        "- open_and_type(app_name='notepad', text='content to type', save_filename='notes.txt')\n\n"
+        "- open_and_type(app_name='notepad', text='content to type', save_filename='notes.txt')\n"
+        "- store_memory(content='information to remember', category='preference|note|project|fact')\n"
+        "- recall_memory(query='query to retrieve from long-term memory')\n"
+        "- search_memory(query='search query')\n\n"
         "Guidelines:\n"
         "1. For multi-step tasks, emit all necessary CALL lines in logical sequence.\n"
         "2. If no tools are required, answer directly with authentic British butler cadence.\n"
@@ -146,6 +154,10 @@ class TaskOrchestrator:
                         args["cmd"] = val
                     elif tool_name in ["inspect_screen", "inspect_camera"]:
                         args["query"] = val
+                    elif tool_name in ["store_memory"]:
+                        args["content"] = val
+                    elif tool_name in ["recall_memory", "search_memory"]:
+                        args["query"] = val
 
             calls.append((tool_name, args))
         return calls
@@ -191,6 +203,12 @@ class TaskOrchestrator:
                     summaries.append(f"{out}")
                 elif tool == "close_process":
                     summaries.append(f"{out}")
+                elif tool == "store_memory":
+                    summaries.append(f"indexed and committed to long-term neural recall: {out}")
+                elif tool == "recall_memory":
+                    summaries.append(f"retrieved neural memory context: {str(out)[:140]}")
+                elif tool == "search_memory":
+                    summaries.append(f"queried vector database with result: {str(out)[:140]}")
                 else:
                     summaries.append(f"{tool} completed: {str(out)[:100]}")
             else:
