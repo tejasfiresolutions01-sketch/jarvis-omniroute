@@ -150,6 +150,14 @@ def main():
     except Exception:
         pass
 
+    # 9. Start Autonomous Holographic Interface Sentinel & App Lifecycle Daemon
+    try:
+        from core.hologram_sentinel import hologram_sentinel
+        hologram_sentinel.start()
+        hologram_sentinel.display_hologram(reason="device_startup")
+    except Exception:
+        pass
+
     parser = argparse.ArgumentParser(description="J.A.R.V.I.S. Artificial Intelligence System")
     parser.add_argument("--cli", action="store_true", help="Launch in Interactive Command Line mode")
     parser.add_argument("--voice", action="store_true", help="Launch in Hands-Free Continuous Voice Conversation mode")

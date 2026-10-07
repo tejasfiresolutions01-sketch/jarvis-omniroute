@@ -88,7 +88,7 @@ class DisplaySentinel:
         return greetings[idx]
 
     def trigger_greeting(self, reason: str = "display_on"):
-        """Vocalizes the greeting through J.A.R.V.I.S. speech engine."""
+        """Vocalizes the greeting through J.A.R.V.I.S. speech engine and displays holographic HUD."""
         now = time.time()
         if now - self._last_greeting_time < self.GREETING_COOLDOWN_SECONDS:
             return
@@ -97,6 +97,13 @@ class DisplaySentinel:
         greeting_text = self.generate_display_greeting()
         print(f"[Display Sentinel]: Display active ({reason}). Vocalizing greeting: '{greeting_text}'")
         speak(greeting_text)
+
+        # Autonomous Holographic Tactical Interface Display
+        try:
+            from core.hologram_sentinel import hologram_sentinel
+            hologram_sentinel.display_hologram(reason=f"device_on_{reason}")
+        except Exception:
+            pass
 
     def _monitor_loop(self):
         """Background daemon polling user presence and display status."""

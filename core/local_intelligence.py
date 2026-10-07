@@ -138,22 +138,23 @@ class LocalIntelligence:
             from tools.gui_controller import gui_controller
             return True, gui_controller.browser_action("refresh")
 
-        if any(p in clean_lower for p in ["stealth mode", "enter stealth mode", "hide hud", "minimize hud", "minimize to background"]):
-            import ctypes
-            user32 = ctypes.windll.user32
-            hwnd = user32.FindWindowW(None, config.HUD_WINDOW_TITLE)
-            if hwnd:
-                user32.ShowWindow(hwnd, 0) # SW_HIDE
-            return True, "Engaging background stealth mode, sir. The Tactical HUD is concealed. Press Ctrl+Alt+J or state 'Hey Jarvis' to summon me at any moment."
+        if any(p in clean_lower for p in [
+            "stealth mode", "enter stealth mode", "hide hud", "minimize hud", "minimize to background",
+            "hide holographic interface", "hide holographic interference", "hide holographic hud", "conceal hud"
+        ]):
+            from core.hologram_sentinel import hologram_sentinel
+            hologram_sentinel.hide_hologram()
+            return True, "Engaging background stealth mode, sir. The Holographic Tactical HUD is concealed. Press Ctrl+Alt+J or state 'Hey Jarvis' to summon me at any moment."
 
-        if any(p in clean_lower for p in ["show hud", "restore hud", "bring up hud", "open hud", "summon hud"]):
-            import ctypes
-            user32 = ctypes.windll.user32
-            hwnd = user32.FindWindowW(None, config.HUD_WINDOW_TITLE)
-            if hwnd:
-                user32.ShowWindow(hwnd, 9) # SW_RESTORE
-                user32.SetForegroundWindow(hwnd)
-            return True, "Tactical HUD restored and elevated to the foreground, sir."
+        if any(p in clean_lower for p in [
+            "show holographic interface", "display holographic interface", "open holographic interface",
+            "show holographic interference", "display holographic interference", "open holographic interference",
+            "show holographic hud", "display holographic hud", "holographic interface", "holographic interference",
+            "show hud", "restore hud", "bring up hud", "open hud", "summon hud"
+        ]):
+            from core.hologram_sentinel import hologram_sentinel
+            hologram_sentinel.display_hologram(reason="voice_command")
+            return True, "Tactical holographic interface restored and elevated to your screen, sir."
 
         # ─────────────────────────────────────────────────────────────────────
         # 4b. Multimodal Screen & Webcam Vision (PHASE 3)
