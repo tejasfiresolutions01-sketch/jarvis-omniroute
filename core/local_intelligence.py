@@ -47,8 +47,21 @@ class LocalIntelligence:
             return True, sched_res
 
         # ─────────────────────────────────────────────────────────────────────
-        # 2. Application & Web Launching
+        # 2. Application, Folder & Script Launching
         # ─────────────────────────────────────────────────────────────────────
+        folder_match = re.match(r"^(?:open|explore|show)\s+(?:the\s+)?(?:folder|directory)\s+(.+)$", clean_lower)
+        if folder_match:
+            f_target = folder_match.group(1).strip()
+            res = system_controller.open_folder(f_target)
+            return True, res
+
+        run_match = re.match(r"^(?:run|execute)\s+(.+)$", clean_lower)
+        if run_match:
+            r_target = run_match.group(1).strip()
+            if not any(w in r_target for w in [" ai", " expert", " specialist", " model", "document generation", "marketing", "lead generation", "problem handling"]):
+                res = system_controller.execute_program(r_target)
+                return True, res
+
         open_match = re.match(r"^(?:open|launch|start|bring up|go to)\s+(.+)$", clean_lower)
         if open_match:
             raw_target = open_match.group(1).strip()

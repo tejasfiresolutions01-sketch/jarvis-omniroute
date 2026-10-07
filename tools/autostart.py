@@ -26,10 +26,20 @@ def enable_autostart() -> bool:
 
         # 2. Windows Startup Folder Shortcut
         startup_dir = Path(os.path.expandvars(r"%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup"))
+        vbs_script = None
         if startup_dir.exists():
             vbs_script = startup_dir / "jarvis_autostart.vbs"
             vbs_content = f'CreateObject("Wscript.Shell").Run """{run_bat}""", 0, False\n'
             vbs_script.write_text(vbs_content, encoding="utf-8")
+
+        # 3. Windows Task Scheduler (Guarantees execution on every device logon / power on)
+        try:
+            import subprocess
+            target_run = f'"{vbs_script}"' if vbs_script and vbs_script.exists() else f'"{run_bat}"'
+            sch_cmd = f'schtasks /create /tn "JARVIS_AI_SYSTEM" /tr "wscript.exe {target_run}" /sc onlogon /f'
+            subprocess.run(sch_cmd, shell=True, capture_output=True)
+        except Exception:
+            pass
 
         return True
     except Exception:

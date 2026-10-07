@@ -81,6 +81,7 @@ class SystemController:
         ],
         "explorer": ["explorer.exe", r"C:\Windows\explorer.exe"],
         "files": ["explorer.exe", r"C:\Windows\explorer.exe"],
+        "file explorer": ["explorer.exe", r"C:\Windows\explorer.exe"],
         "terminal": [shutil.which("wt"), "wt.exe", "powershell.exe"],
         "cmd": ["cmd.exe", r"C:\Windows\System32\cmd.exe"],
         "powershell": ["powershell.exe", r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"],
@@ -88,15 +89,119 @@ class SystemController:
         "task manager": ["taskmgr.exe", r"C:\Windows\System32\taskmgr.exe"],
         "settings": ["ms-settings:"],
         "paint": ["mspaint.exe", r"C:\Windows\System32\mspaint.exe"],
-        "spotify": [os.path.expandvars(r"%APPDATA%\Spotify\Spotify.exe"), "spotify.exe"]
+        "spotify": [os.path.expandvars(r"%APPDATA%\Spotify\Spotify.exe"), "spotify.exe"],
+        "discord": [os.path.expandvars(r"%LOCALAPPDATA%\Discord\Update.exe --processStart Discord.exe"), "discord.exe"],
+        "steam": [r"C:\Program Files (x86)\Steam\steam.exe", "steam.exe"],
+        "word": ["winword.exe", "winword"],
+        "excel": ["excel.exe", "excel"],
+        "powerpoint": ["powerpnt.exe", "powerpnt"],
+        "outlook": ["outlook.exe", "outlook"],
+        "camera": ["microsoft.windows.camera:"],
+        "control panel": ["control.exe", r"C:\Windows\System32\control.exe"],
+        "vlc": [r"C:\Program Files\VideoLAN\VLC\vlc.exe", "vlc.exe"],
+        "obs": [r"C:\Program Files\obs-studio\bin\64bit\obs64.exe", "obs64.exe"],
+        "brave": [r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe", "brave.exe"],
+        "firefox": [r"C:\Program Files\Mozilla Firefox\firefox.exe", "firefox.exe"],
+        "git bash": [r"C:\Program Files\Git\git-bash.exe", os.path.expandvars(r"%LOCALAPPDATA%\Programs\Git\git-bash.exe")]
     }
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Folder Resolution & Management
+    # ─────────────────────────────────────────────────────────────────────────
+    FOLDER_ALIASES = {
+        "downloads": Path.home() / "Downloads",
+        "download": Path.home() / "Downloads",
+        "documents": Path.home() / "Documents",
+        "document": Path.home() / "Documents",
+        "docs": Path.home() / "Documents",
+        "desktop": Path.home() / "Desktop",
+        "pictures": Path.home() / "Pictures",
+        "picture": Path.home() / "Pictures",
+        "photos": Path.home() / "Pictures",
+        "videos": Path.home() / "Videos",
+        "video": Path.home() / "Videos",
+        "movies": Path.home() / "Videos",
+        "music": Path.home() / "Music",
+        "songs": Path.home() / "Music",
+        "c drive": Path("C:\\"),
+        "c:": Path("C:\\"),
+        "d drive": Path("D:\\"),
+        "d:": Path("D:\\"),
+        "jarvis": Path(r"C:\jarvis ai"),
+        "jarvis ai": Path(r"C:\jarvis ai"),
+        "codebase": Path(r"C:\jarvis ai"),
+        "project": Path(r"C:\jarvis ai")
+    }
+
+    def is_folder_target(self, target: str) -> bool:
+        """Determines if the target points to a known or existing filesystem directory."""
+        clean = target.lower().strip().replace("folder", "").replace("directory", "").strip()
+        if clean in self.FOLDER_ALIASES:
+            return True
+        p = Path(clean)
+        try:
+            return p.exists() and p.is_dir()
+        except Exception:
+            return False
+
+    def open_folder(self, folder_target: str) -> str:
+        """Opens any folder or drive in Windows File Explorer with full system authority."""
+        clean = folder_target.lower().strip().replace("folder", "").replace("directory", "").strip()
+
+        # Check alias dictionary
+        target_path = self.FOLDER_ALIASES.get(clean)
+
+        # Direct path check
+        if not target_path:
+            p = Path(folder_target.strip(" \t\n\r\"'"))
+            if p.exists() and p.is_dir():
+                target_path = p
+            else:
+                p2 = Path(clean)
+                if p2.exists() and p2.is_dir():
+                    target_path = p2
+
+        if not target_path:
+            # Fallback to user home or Desktop if unrecognized
+            target_path = Path.home() / "Downloads" if "download" in clean else Path.home()
+
+        try:
+            str_path = str(target_path.resolve())
+            subprocess.Popen(["explorer.exe", str_path])
+            return f"Opening {target_path.name or str_path} folder in File Explorer, sir."
+        except Exception as e:
+            try:
+                os.startfile(str(target_path))
+                return f"Opening {target_path.name} folder for you now, sir."
+            except Exception as e2:
+                return f"Unable to open folder {folder_target}, sir: {e2}"
+
+    def _find_app_path_in_registry(self, name: str) -> Optional[str]:
+        """Queries Windows Registry App Paths for registered application binaries."""
+        import winreg
+        clean_name = name.lower().strip()
+        for root in [winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER]:
+            for sub in [f"{clean_name}.exe", clean_name]:
+                try:
+                    k = winreg.OpenKey(root, f"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\{sub}")
+                    val, _ = winreg.QueryValueEx(k, "")
+                    winreg.CloseKey(k)
+                    if val and os.path.exists(val):
+                        return val
+                except Exception:
+                    pass
+        return None
 
     # ─────────────────────────────────────────────────────────────────────────
     # Application & Web Launching
     # ─────────────────────────────────────────────────────────────────────────
     def launch(self, target: str, arguments: str = "") -> str:
-        """Launches any software application, executable, file, or website URL."""
+        """Launches any software application, executable, folder, or website URL."""
         clean = target.lower().strip()
+
+        # 0. Folder check
+        if "folder" in clean or "directory" in clean or self.is_folder_target(clean):
+            return self.open_folder(clean)
 
         # 1. Web Destination Alias Check
         if clean in self.WEB_TARGETS:
@@ -126,9 +231,12 @@ class SystemController:
         for cand in candidates:
             if not cand:
                 continue
-            if str(cand).startswith("ms-settings:"):
-                os.startfile("ms-settings:")
-                return "Opening Windows Settings, sir."
+            if str(cand).startswith("ms-settings:") or str(cand).startswith("microsoft.windows.camera:"):
+                try:
+                    os.startfile(str(cand))
+                    return f"Opening {target.title()}, sir."
+                except Exception:
+                    pass
             if os.path.exists(str(cand)):
                 resolved_exe = cand
                 break
@@ -136,6 +244,12 @@ class SystemController:
             if which_p and os.path.exists(which_p):
                 resolved_exe = which_p
                 break
+
+        # 5. Check Registry App Paths
+        if not resolved_exe:
+            reg_p = self._find_app_path_in_registry(clean)
+            if reg_p:
+                resolved_exe = reg_p
 
         if not resolved_exe:
             resolved_exe = candidates[0] if candidates else target.strip()
@@ -153,6 +267,30 @@ class SystemController:
                 return f"Opening {target.title()} for you now, sir."
             except Exception as e2:
                 return f"Unable to launch {target}, sir: {e2}"
+
+    def execute_program(self, command_or_target: str, arguments: str = "") -> str:
+        """Executes any program, script, executable, or system command with full authority."""
+        clean = command_or_target.strip()
+        if self.is_folder_target(clean):
+            return self.open_folder(clean)
+
+        try:
+            # If target exists directly as a file (.py, .bat, .exe, etc.)
+            p = Path(clean.strip("\"'"))
+            if p.exists() and p.is_file():
+                if p.suffix.lower() == ".py":
+                    subprocess.Popen([sys.executable, str(p.resolve())], cwd=str(p.parent))
+                    return f"Executing Python script {p.name}, sir."
+                else:
+                    os.startfile(str(p.resolve()))
+                    return f"Executing {p.name}, sir."
+
+            # Otherwise launch via shell
+            full_cmd = f"{clean} {arguments}".strip()
+            subprocess.Popen(full_cmd, shell=True)
+            return f"Command '{clean}' dispatched with full system authority, sir."
+        except Exception as e:
+            return f"Execution failed for '{clean}', sir: {e}"
 
     def close_process(self, process_name: str) -> str:
         """Terminates a process by alias or process name."""

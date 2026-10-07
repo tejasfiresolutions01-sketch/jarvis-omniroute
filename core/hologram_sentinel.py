@@ -38,6 +38,8 @@ class HologramSentinel:
         self._running = False
         self._thread: Optional[threading.Thread] = None
         self._last_trigger_time = 0.0
+        self._last_manual_summon_time = 0.0
+        self._app_focus_streak = 0
         self._tracked_windows: Dict[int, Tuple[str, float]] = {}  # hwnd -> (title, first_seen_timestamp)
         self.user32 = ctypes.windll.user32
         self.kernel32 = ctypes.windll.kernel32
@@ -80,7 +82,10 @@ class HologramSentinel:
         If not yet launched, spawns ui/hud.py in detached interactive desktop mode.
         """
         now = time.time()
-        if now - self._last_trigger_time < self.TRIGGER_COOLDOWN_SECONDS and reason != "manual":
+        if reason in ["manual", "voice_command"]:
+            self._last_manual_summon_time = now
+
+        if now - self._last_trigger_time < self.TRIGGER_COOLDOWN_SECONDS and reason not in ["manual", "voice_command"]:
             return False
 
         self._last_trigger_time = now
@@ -196,7 +201,8 @@ class HologramSentinel:
     def _monitor_loop(self):
         """
         Background monitoring daemon.
-        Scans top-level application windows every 350ms to detect application close events.
+        1. When user is working in an app or on a website, hides HUD into background.
+        2. When user is on Desktop or closes an app, displays the holographic interface.
         """
         # Initial population
         current = self._get_active_application_windows()
@@ -207,29 +213,62 @@ class HologramSentinel:
         while self._running:
             try:
                 time.sleep(0.35)
-                current_active = self._get_active_application_windows()
                 now = time.time()
+                _attach_to_interactive_desktop()
+
+                # Inspect current foreground window
+                fg = self.user32.GetForegroundWindow()
+                cls_buf = ctypes.create_unicode_buffer(256)
+                self.user32.GetClassNameW(fg, cls_buf, 256)
+                cls_name = cls_buf.value
+
+                hud_hwnd = self.get_hud_hwnd()
+                is_desktop_or_idle = (
+                    fg == 0 or
+                    cls_name in ["Progman", "WorkerW", "Shell_TrayWnd", "Shell_SecondaryTrayWnd"]
+                )
+                is_hud_focused = (fg == hud_hwnd and hud_hwnd is not None)
+
+                # Check manual summon grace period
+                in_manual_grace = (now - self._last_manual_summon_time < 8.0)
+
+                # Behavior A: User is working with an external application or website
+                if not is_desktop_or_idle and not is_hud_focused and not in_manual_grace:
+                    self._app_focus_streak += 1
+                    # After 0.7s of steady interaction in the external application, slip to background
+                    if self._app_focus_streak >= 2:
+                        if self.is_hologram_visible():
+                            self.hide_hologram()
+                            print(f"[Holographic Sentinel]: User active in '{cls_name}'. Running in background.")
+                elif is_desktop_or_idle:
+                    self._app_focus_streak = 0
+                    # Behavior B: User is on Desktop (otherwise), ensure Holographic Interface is displayed!
+                    if not self.is_hologram_visible():
+                        self.display_hologram(reason="idle_on_desktop")
+                else:
+                    self._app_focus_streak = 0
+
+                # Track app window closures
+                current_active = self._get_active_application_windows()
+                closed_hwnds = []
+                for hwnd, (title, first_seen) in list(self._tracked_windows.items()):
+                    if hwnd not in current_active:
+                        closed_hwnds.append((hwnd, title, first_seen))
 
                 # Add newly opened windows to tracked set
                 for hwnd, title in current_active.items():
                     if hwnd not in self._tracked_windows:
                         self._tracked_windows[hwnd] = (title, now)
 
-                # Check for closed windows
-                closed_hwnds = []
-                for hwnd, (title, first_seen) in list(self._tracked_windows.items()):
-                    if hwnd not in current_active:
-                        closed_hwnds.append((hwnd, title, first_seen))
-
                 for hwnd, title, first_seen in closed_hwnds:
                     del self._tracked_windows[hwnd]
                     lifetime = now - first_seen
 
-                    # Confirm genuine application close (existed for >= MIN_WINDOW_LIFETIME)
+                    # Confirm genuine application close
                     if lifetime >= self.MIN_WINDOW_LIFETIME and not self.user32.IsWindow(hwnd):
-                        print(f"[Holographic Sentinel]: Application closed: '{title}'. Triggering holographic HUD.")
+                        print(f"[Holographic Sentinel]: Application closed: '{title}'. Displaying holographic HUD.")
                         self.display_hologram(reason=f"app_closed_{title}")
-                        break  # Cooldown will handle any simultaneous window closures
+                        break
 
             except Exception as e:
                 time.sleep(1.0)

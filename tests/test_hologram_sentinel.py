@@ -112,5 +112,46 @@ class TestHologramSentinel(unittest.TestCase):
         self.assertIn("The Holographic Tactical HUD is concealed", resp)
         self.assertTrue(mock_hide_holo.called)
 
+    @patch("subprocess.Popen")
+    def test_system_controller_open_folder(self, mock_popen):
+        """Verifies opening standard folders in File Explorer."""
+        from tools.system_controller import system_controller
+        resp = system_controller.open_folder("downloads")
+        self.assertIn("Downloads folder in File Explorer", resp)
+        self.assertTrue(mock_popen.called)
+
+    @patch("subprocess.Popen")
+    def test_system_controller_execute_program(self, mock_popen):
+        """Verifies executing commands or scripts with system authority."""
+        from tools.system_controller import system_controller
+        resp = system_controller.execute_program("calc.exe")
+        self.assertIn("dispatched with full system authority", resp)
+        self.assertTrue(mock_popen.called)
+
+    @patch("tools.system_controller.system_controller.open_folder")
+    def test_local_intelligence_folder_intents(self, mock_open_folder):
+        """Verifies voice recognition for opening folders."""
+        mock_open_folder.return_value = "Opening Downloads folder, sir."
+        local_intel = LocalIntelligence()
+        handled, resp = local_intel.evaluate_and_execute("open folder downloads")
+        self.assertTrue(handled)
+        self.assertIn("Opening Downloads folder", resp)
+
+    @patch("tools.system_controller.system_controller.execute_program")
+    def test_local_intelligence_run_script_intents(self, mock_exec):
+        """Verifies voice recognition for executing commands."""
+        mock_exec.return_value = "Command executed, sir."
+        local_intel = LocalIntelligence()
+        handled, resp = local_intel.evaluate_and_execute("run backup.py")
+        self.assertTrue(handled)
+        self.assertIn("Command executed", resp)
+
+    def test_autostart_verification(self):
+        """Verifies autostart configuration function."""
+        from tools.autostart import is_autostart_enabled
+        # Check function runs without error
+        status = is_autostart_enabled()
+        self.assertIsInstance(status, bool)
+
 if __name__ == "__main__":
     unittest.main()
