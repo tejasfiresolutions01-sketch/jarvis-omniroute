@@ -1,108 +1,254 @@
-import threading
-import time
+"""
+J.A.R.V.I.S. Hands-Free Auditory Perception & Voice Conversation Matrix.
+Features:
+1. Native low-latency audio capture with hardware microphone array via sounddevice.
+2. Adaptive End-of-Speech Detection: Waits long enough (2.2s pause threshold) so user speech is never cut off.
+3. Biometric Speaker Verification: Evaluates both low-frequency chest resonance and high-frequency inflections.
+4. Continuous Multi-Turn Voice Conversation Mode: Natural dialogue without needing repeated wake words.
+5. Acoustic Barge-in Interruption.
+"""
+
+import os
 import re
-from typing import Callable, Optional
+import time
+import threading
+from typing import Callable, Optional, Tuple
+import numpy as np
+import sounddevice as sd
+import speech_recognition as sr
+
 from core.chimes import play_wake_chime, play_ack_chime
-from core.voice import stop_speaking
+from core.voice import stop_speaking, is_speaking
+from core.voice_biometrics import voice_biometrics
+import config
 
 class VoiceListener:
     """
-    Hands-Free Auditory Perception & Wake-Word Interceptor.
-    Continuously monitors microphone for 'Hey Jarvis' or 'Jarvis',
-    provides acoustic chime feedback, and supports acoustic barge-in.
+    Hands-Free Auditory Perception & Voice Conversation Engine.
     """
 
     WAKE_WORDS = ["hey jarvis", "okay jarvis", "ok jarvis", "jarvis"]
     STOP_WORDS = ["jarvis stop", "stop talking", "be quiet", "silence", "shut up"]
+    EXIT_CONVERSATION_WORDS = ["that will be all", "thank you jarvis", "that's all", "goodbye", "stand down", "stop conversation", "exit"]
 
     def __init__(self):
-        self.is_monitoring = False
-        self._thread: Optional[threading.Thread] = None
-        self._recognizer = None
-        self._microphone = None
+        self.sample_rate = 16000
+        self.chunk_size = 1600 # 100ms chunks at 16kHz
+        # Wait long enough for conversation/thought to end (2.2s silence threshold)
+        self.pause_threshold = float(os.getenv("VOICE_PAUSE_THRESHOLD", "2.2"))
+        self.phrase_time_limit = float(os.getenv("VOICE_PHRASE_TIME_LIMIT", "35.0"))
+        self.conversational_idle_timeout = float(os.getenv("VOICE_CONVERSATION_IDLE_TIMEOUT", "12.0"))
 
-    def _init_sr(self):
-        if self._recognizer is None:
-            try:
-                import speech_recognition as sr
-                self._recognizer = sr.Recognizer()
-                self._recognizer.energy_threshold = 280
-                self._recognizer.dynamic_energy_threshold = True
-                self._recognizer.pause_threshold = 0.8
-                self._microphone = sr.Microphone()
-            except Exception:
-                pass
+        self.is_monitoring = False
+        self.in_conversation_mode = False
+        self._thread: Optional[threading.Thread] = None
+        self._recognizer = sr.Recognizer()
+
+    def record_audio_utterance(self, timeout: float = 8.0, prompt_text: str = "") -> Optional[bytes]:
+        """
+        Records an audio utterance from the microphone.
+        Waits long enough for the user to conclude their thought (pause_threshold = 2.2s).
+        Returns raw 16-bit PCM mono bytes at 16000 Hz, or None if timed out/silence.
+        """
+        if prompt_text:
+            print(f"\n[Microphone Active]: {prompt_text}")
+
+        recorded_frames = []
+        has_started_speaking = False
+        silence_duration = 0.0
+        start_time = time.time()
+
+        try:
+            with sd.InputStream(samplerate=self.sample_rate, channels=1, dtype='int16', blocksize=self.chunk_size) as stream:
+                # 1. Quick ambient noise calibration (0.3s)
+                ambient_frames = []
+                for _ in range(3):
+                    chunk, _ = stream.read(self.chunk_size)
+                    ambient_frames.append(chunk)
+                ambient_arr = np.concatenate(ambient_frames).astype(np.float32)
+                ambient_rms = np.sqrt(np.mean(ambient_arr ** 2))
+                # Set dynamic speech energy threshold
+                speech_threshold = max(380.0, float(ambient_rms * 1.7))
+
+                # 2. Main recording loop
+                while True:
+                    # Check overall timeout before speech starts
+                    if not has_started_speaking and (time.time() - start_time > timeout):
+                        return None
+
+                    # Check max phrase duration limit
+                    if time.time() - start_time > self.phrase_time_limit:
+                        break
+
+                    chunk, overflow = stream.read(self.chunk_size)
+                    chunk_flt = chunk.astype(np.float32)
+                    chunk_rms = np.sqrt(np.mean(chunk_flt ** 2))
+
+                    if chunk_rms >= speech_threshold:
+                        # User is speaking
+                        has_started_speaking = True
+                        silence_duration = 0.0
+                        recorded_frames.append(chunk)
+                    else:
+                        if has_started_speaking:
+                            # User has started speaking, but is currently pausing
+                            recorded_frames.append(chunk)
+                            silence_duration += (self.chunk_size / self.sample_rate)
+                            # Wait long enough for conversation to end!
+                            if silence_duration >= self.pause_threshold:
+                                # User has completed their statement
+                                break
+
+            if has_started_speaking and recorded_frames:
+                all_pcm = np.concatenate(recorded_frames).tobytes()
+                return all_pcm
+        except Exception as e:
+            print(f"[Microphone Warning]: SoundDevice capture failed ({e}), falling back...")
+        return None
+
+    def speech_to_text(self, pcm_bytes: bytes) -> str:
+        """Converts raw PCM audio to text using speech recognition."""
+        if not pcm_bytes:
+            return ""
+        try:
+            audio_data = sr.AudioData(pcm_bytes, self.sample_rate, 2)
+            text = self._recognizer.recognize_google(audio_data)
+            return text.strip()
+        except sr.UnknownValueError:
+            return ""
+        except Exception as e:
+            print(f"[STT Exception]: {e}")
+            return ""
+
+    def capture_and_authenticate(self, timeout: float = 8.0, prompt: str = "") -> Tuple[str, bool]:
+        """
+        Captures audio, verifies the user's voice biometrics (low & high frequency),
+        and returns (transcribed_text, is_authorized).
+        """
+        play_wake_chime()
+        pcm_bytes = self.record_audio_utterance(timeout=timeout, prompt_text=prompt)
+        if not pcm_bytes:
+            return "", False
+
+        # Verify biometric speaker identity across both low and high frequencies
+        is_auth, conf, msg = voice_biometrics.verify_speaker(pcm_bytes, self.sample_rate)
+        if not is_auth:
+            print(f"[Acoustic Sentinel]: Unauthorized voice rejected ({msg})")
+            return "", False
+
+        text = self.speech_to_text(pcm_bytes)
+        if text:
+            play_ack_chime()
+            print(f"[Captured Voice]: {text}")
+            return text, True
+
+        return "", False
 
     def listen(self, prompt: str = "Directive, sir: ") -> str:
-        """Captures voice input via microphone with acoustic prompt."""
-        self._init_sr()
-        if self._recognizer and self._microphone:
-            try:
-                import speech_recognition as sr
-                print(f"\n[Microphone Active] {prompt}")
-                play_wake_chime()
-                with self._microphone as source:
-                    self._recognizer.adjust_for_ambient_noise(source, duration=0.4)
-                    audio = self._recognizer.listen(source, timeout=6, phrase_time_limit=10)
-                text = self._recognizer.recognize_google(audio)
-                print(f"[Captured Voice]: {text}")
-                play_ack_chime()
-                return text
-            except Exception:
-                pass
+        """
+        Primary single-turn voice listening method with console fallback.
+        """
+        text, is_auth = self.capture_and_authenticate(timeout=8.0, prompt=prompt)
+        if text and is_auth:
+            return text
 
-        # Fallback to console input if mic times out or unavailable
+        # Fallback to console input if mic times out or environment is silent
         try:
             return input(prompt)
         except (EOFError, Exception):
             time.sleep(1)
             return ""
 
-    def start_wake_word_daemon(self, callback: Callable[[str], None]):
+    def start_conversation_session(self, process_command_callback: Callable[[str], bool]):
+        """
+        Engages continuous multi-turn voice conversation.
+        Keeps listening for follow-ups without requiring 'Hey Jarvis' every sentence.
+        Waits long enough for user pauses, and exits on silence or farewell phrases.
+        """
+        self.in_conversation_mode = True
+        print("\n[Voice Conversation]: Channel opened. Multi-turn dialogue active.")
+        idle_start = time.time()
+
+        while self.in_conversation_mode:
+            # Wait for previous vocalization to finish before listening
+            while is_speaking:
+                time.sleep(0.1)
+
+            text, is_auth = self.capture_and_authenticate(
+                timeout=self.conversational_idle_timeout,
+                prompt="Listening to Sir..."
+            )
+
+            if not text:
+                # No speech captured in conversational idle window
+                print("[Voice Conversation]: Idle timeout elapsed. Reverting to ambient standby.")
+                self.in_conversation_mode = False
+                break
+
+            if not is_auth:
+                continue
+
+            lower = text.lower()
+
+            # Check for conversational exit commands
+            if any(w in lower for w in self.EXIT_CONVERSATION_WORDS):
+                from core.voice import speak
+                speak("Standing by, sir. Call upon me whenever needed.")
+                self.in_conversation_mode = False
+                break
+
+            # Execute user command through cognitive core
+            keep_running = process_command_callback(text)
+            if not keep_running:
+                self.in_conversation_mode = False
+                break
+
+            # Reset idle timer for next turn
+            idle_start = time.time()
+
+    def start_wake_word_daemon(self, callback: Callable[[str], bool]):
         """Runs continuous background wake-word monitor for 'Hey Jarvis'."""
         if self.is_monitoring:
             return
         self.is_monitoring = True
-        self._init_sr()
 
         def _monitor_loop():
-            print("[Auditory Sentinel]: Background wake-word detection active ('Hey Jarvis')...")
+            print("[Auditory Sentinel]: Background wake-word monitor active ('Hey Jarvis')...")
             while self.is_monitoring:
-                if not self._recognizer or not self._microphone:
-                    time.sleep(2)
+                if self.in_conversation_mode or is_speaking:
+                    time.sleep(0.3)
                     continue
+
                 try:
-                    import speech_recognition as sr
-                    with self._microphone as source:
-                        self._recognizer.adjust_for_ambient_noise(source, duration=0.3)
-                        audio = self._recognizer.listen(source, timeout=4, phrase_time_limit=8)
+                    # Quick ambient listen for wake word
+                    pcm_bytes = self.record_audio_utterance(timeout=4.0)
+                    if not pcm_bytes:
+                        continue
 
-                    # Recognize audio phrase
-                    phrase = self._recognizer.recognize_google(audio).lower().strip()
+                    # Verify speaker biometric profile across low & high frequencies
+                    is_auth, conf, msg = voice_biometrics.verify_speaker(pcm_bytes, self.sample_rate)
+                    if not is_auth:
+                        continue
 
-                    # Check for Barge-In Stop Directive
+                    phrase = self.speech_to_text(pcm_bytes).lower().strip()
+                    if not phrase:
+                        continue
+
+                    # Barge-in stop check
                     if any(s in phrase for s in self.STOP_WORDS):
                         stop_speaking()
                         continue
 
-                    # Check for Wake Word
+                    # Wake word trigger
                     for w in self.WAKE_WORDS:
                         if w in phrase:
-                            play_wake_chime()
-                            # Extract command if spoken in same breath (e.g. "Hey Jarvis, what is my schedule?")
                             cmd = re.sub(rf"^.*?\b{w}\b[,\s]*", "", phrase).strip()
                             if cmd:
-                                play_ack_chime()
                                 callback(cmd)
-                            else:
-                                # Prompt user for directive
-                                play_wake_chime()
-                                with self._microphone as sub_source:
-                                    sub_audio = self._recognizer.listen(sub_source, timeout=5, phrase_time_limit=8)
-                                sub_cmd = self._recognizer.recognize_google(sub_audio)
-                                play_ack_chime()
-                                callback(sub_cmd)
+                            # After wake word interaction, engage conversation mode
+                            self.start_conversation_session(callback)
                             break
+
                 except Exception:
                     time.sleep(0.3)
 
@@ -111,6 +257,7 @@ class VoiceListener:
 
     def stop_wake_word_daemon(self):
         self.is_monitoring = False
+        self.in_conversation_mode = False
 
 # Global singleton
 listener = VoiceListener()

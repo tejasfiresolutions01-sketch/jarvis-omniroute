@@ -43,6 +43,12 @@ def process_command(user_input: str) -> bool:
         speak(farewell)
         return False
 
+    if any(cmd in lower for cmd in ["start voice conversation", "voice conversation mode", "let's talk", "lets chat"]):
+        greeting = "Continuous voice conversation mode engaged, sir. I am listening continuously and will wait patiently for you to finish your statements."
+        speak(greeting)
+        threading.Thread(target=lambda: listener.start_conversation_session(process_command), daemon=True).start()
+        return True
+
     response = brain.think(clean)
     speak(response)
     return True
@@ -113,10 +119,14 @@ def main():
 
     parser = argparse.ArgumentParser(description="J.A.R.V.I.S. Artificial Intelligence System")
     parser.add_argument("--cli", action="store_true", help="Launch in Interactive Command Line mode")
+    parser.add_argument("--voice", action="store_true", help="Launch in Hands-Free Continuous Voice Conversation mode")
     parser.add_argument("--headless", action="store_true", help="Run background services and web portal silently")
     args = parser.parse_args()
 
-    if args.cli:
+    if args.voice:
+        speak("J.A.R.V.I.S. voice conversation matrix activated, sir. I am standing by.")
+        listener.start_conversation_session(process_command)
+    elif args.cli:
         run_cli()
     elif args.headless:
         print("[J.A.R.V.I.S.]: Running in headless background mode. Press Ctrl+C to stop.")

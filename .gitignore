@@ -17,6 +17,7 @@
 memory/*.db
 memory/*.sqlite
 memory/*.sqlite3
+memory/*.json
 *.db
 *.sqlite
 *.sqlite3

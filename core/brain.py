@@ -12,6 +12,7 @@ from core.learning_matrix import learning_matrix
 from core.session_feedback import session_feedback
 from core.local_intelligence import local_intelligence
 from core.online_intelligence import online_intelligence
+from core.task_orchestrator import task_orchestrator
 from memory.memory_store import memory
 from tools.system_controller import system_controller
 import config
@@ -105,7 +106,14 @@ class JarvisBrain:
             memory.log_interaction("JARVIS (Session Debrief)", debrief_msg)
             return enforce_single_question(debrief_msg)
 
-        # 10. Local Offline Execution Matrix (ZERO LATENCY)
+        # 10a. Complex Multi-Step Directives & Task Orchestration (OmniRoute Free Matrix)
+        if task_orchestrator.is_complex_directive(clean_prompt):
+            complex_res = task_orchestrator.execute_complex_task(clean_prompt)
+            if complex_res:
+                memory.log_interaction("JARVIS (Task Orchestrator)", complex_res)
+                return enforce_single_question(complex_res)
+
+        # 10b. Local Offline Execution Matrix (ZERO LATENCY for single commands)
         # Handles schedule additions, schedule queries, application launches, volume, vitals, time, date
         is_handled_locally, local_res = local_intelligence.evaluate_and_execute(clean_prompt)
         if is_handled_locally:

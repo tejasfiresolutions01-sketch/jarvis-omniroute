@@ -69,7 +69,30 @@ OMNIROUTE_PORT=20128
 OMNIROUTE_BASE_URL=http://localhost:20128/v1
 OMNIROUTE_API_KEY=your_omniroute_token_if_configured
 OMNIROUTE_MODEL=ddgw/mistral-small-2603
+
+# Voice Conversation & Biometric Settings
+VOICE_PAUSE_THRESHOLD=2.2
+VOICE_PHRASE_TIME_LIMIT=35.0
+VOICE_CONVERSATION_IDLE_TIMEOUT=12.0
+VOICE_VERIFICATION_ENABLED=true
+VOICE_PROFILE_TOLERANCE=0.65
 ```
+
+---
+
+## 🎙️ Hands-Free Voice Conversation & Dual-Frequency Biometrics
+
+J.A.R.V.I.S. features continuous hands-free voice dialogue with adaptive pause detection and acoustic authentication:
+
+1. **Adaptive End-of-Speech Detection:** Configured with a `2.2s` silence timeout, allowing users to comfortably formulate thoughts, breathe, or pause mid-sentence without being interrupted.
+2. **Dual-Frequency Biometric Speaker Verification:** Authenticates the authorized user across both low frequencies (65 Hz - 180 Hz chest resonance) and high frequencies (180 Hz - 450+ Hz pitch elevation & inflections), ignoring background chatter or imposter voices.
+3. **Continuous Conversational Flow (`--voice`):** Keeps an interactive dialog window open (12s idle timeout) after each response, removing the need to repeat wake words on every follow-up turn.
+4. **Autonomous Multi-Step Task Execution:** Leverages OmniRoute free models (`ddgw/mistral-small-2603`, `auto/best-chat`) to plan and execute complex compound directives with tools:
+   - Live web search and web scraping (DuckDuckGo zero-cost APIs)
+   - Real-time system vitals inspection (CPU, RAM, Disk)
+   - Screen inspection & webcam vision
+   - Safe workspace file creation, reading, and manipulation
+   - Desktop and application launching / process control
 
 ---
 

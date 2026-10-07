@@ -169,6 +169,16 @@ class LocalIntelligence:
         if any(p in clean_lower for p in ["run self maintenance", "run maintenance scan", "scan for upgrades", "scan and repair"]):
             return True, learning_matrix.run_self_maintenance_scan(force=True)
 
+        if any(p in clean_lower for p in ["calibrate my voice", "learn my voice", "reset voice profile", "update voice profile"]):
+            from core.voice_biometrics import voice_biometrics
+            voice_biometrics.profile["enrolled"] = False
+            voice_biometrics.profile["sample_count"] = 0
+            voice_biometrics.save_profile()
+            return True, "Voice biometric calibration initiated, sir. Please speak naturally across your normal speaking range so I may calibrate to both your low and high vocal frequencies."
+
+        if any(p in clean_lower for p in ["start voice conversation", "voice conversation mode", "let's talk", "lets talk", "let's chat"]):
+            return True, "Continuous voice conversation mode engaged, sir. I am listening continuously and will wait patiently for you to finish your statements."
+
         # ─────────────────────────────────────────────────────────────────────
         # 8. Butler Etiquette & Identity Directives
         # ─────────────────────────────────────────────────────────────────────

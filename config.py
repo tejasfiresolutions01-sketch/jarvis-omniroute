@@ -19,6 +19,13 @@ TTS_VOICE = os.getenv("TTS_VOICE", "en-GB-RyanNeural")
 TTS_RATE = os.getenv("TTS_RATE", "+0%")
 TTS_PITCH = os.getenv("TTS_PITCH", "+0Hz")
 
+# Voice Conversation & Biometric Settings
+VOICE_PAUSE_THRESHOLD = float(os.getenv("VOICE_PAUSE_THRESHOLD", "2.2")) # Seconds of silence before concluding utterance
+VOICE_PHRASE_TIME_LIMIT = float(os.getenv("VOICE_PHRASE_TIME_LIMIT", "35.0"))
+VOICE_CONVERSATION_IDLE_TIMEOUT = float(os.getenv("VOICE_CONVERSATION_IDLE_TIMEOUT", "12.0"))
+VOICE_VERIFICATION_ENABLED = os.getenv("VOICE_VERIFICATION_ENABLED", "true").lower() in ("true", "1", "yes")
+VOICE_PROFILE_TOLERANCE = float(os.getenv("VOICE_PROFILE_TOLERANCE", "0.65"))
+
 # Network & Port Settings
 WEB_PORTAL_PORT = int(os.getenv("WEB_PORTAL_PORT", "5050"))
 OMNIROUTE_PORT = int(os.getenv("OMNIROUTE_PORT", "20128"))
