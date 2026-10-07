@@ -17,46 +17,62 @@ class OnlineIntelligence:
         "Never output multiple questions in a single response."
     )
 
+    # Prioritized cascade of zero-cost free models served through OmniRoute
+    FREE_MODELS_CASCADE = [
+        "ddgw/mistral-small-2603",
+        "ddgw/gpt-5.4-mini",
+        "ddgw/gpt-5.6-luna",
+        "auto/best-chat",
+        "auto"
+    ]
+
     def is_online_available(self) -> bool:
         """Quickly checks if OmniRoute local gateway is responding."""
         try:
-            r = requests.get(f"{config.OMNIROUTE_BASE_URL}/models", timeout=1.0)
+            r = requests.get(f"{config.OMNIROUTE_BASE_URL}/models", timeout=2.0)
             return r.status_code in [200, 401]
         except Exception:
             return False
 
     def query(self, prompt: str, context: str = "") -> Optional[str]:
         """
-        Sends query to OmniRoute with a strict 6-second timeout.
-        Returns AI response text or None if offline/error.
+        Sends query to OmniRoute with automatic free-provider failover.
+        Cascades through free zero-cost models before trying secondary cloud options.
         """
-        # 1. Try OmniRoute Gateway
         headers = {
             "Authorization": f"Bearer {config.OMNIROUTE_API_KEY}",
             "Content-Type": "application/json"
         }
-        payload = {
-            "model": "auto/best-chat",
-            "messages": [
-                {"role": "system", "content": f"{self.SYSTEM_INSTRUCTION}\n\nContext:\n{context}" if context else self.SYSTEM_INSTRUCTION},
-                {"role": "user", "content": prompt}
-            ],
-            "max_tokens": 800,
-            "temperature": 0.7
-        }
 
-        try:
-            url = f"{config.OMNIROUTE_BASE_URL}/chat/completions"
-            resp = requests.post(url, headers=headers, json=payload, timeout=6.0)
-            if resp.status_code == 200:
-                data = resp.json()
-                choices = data.get("choices", [])
-                if choices:
-                    content = choices[0].get("message", {}).get("content", "").strip()
-                    if content:
-                        return content
-        except Exception:
-            pass
+        # 1. Try OmniRoute Free Provider Cascade
+        models_to_try = [config.OMNIROUTE_MODEL]
+        for m in self.FREE_MODELS_CASCADE:
+            if m not in models_to_try:
+                models_to_try.append(m)
+
+        for model_id in models_to_try:
+            payload = {
+                "model": model_id,
+                "messages": [
+                    {"role": "system", "content": f"{self.SYSTEM_INSTRUCTION}\n\nContext:\n{context}" if context else self.SYSTEM_INSTRUCTION},
+                    {"role": "user", "content": prompt}
+                ],
+                "max_tokens": 800,
+                "temperature": 0.7
+            }
+
+            try:
+                url = f"{config.OMNIROUTE_BASE_URL}/chat/completions"
+                resp = requests.post(url, headers=headers, json=payload, timeout=5.5)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    choices = data.get("choices", [])
+                    if choices:
+                        content = choices[0].get("message", {}).get("content", "").strip()
+                        if content:
+                            return content
+            except Exception:
+                continue
 
         # 2. Direct OpenAI Fallback if key is present
         if config.OPENAI_API_KEY:

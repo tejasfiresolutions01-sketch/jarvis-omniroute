@@ -23,6 +23,7 @@ TTS_PITCH = os.getenv("TTS_PITCH", "+0Hz")
 WEB_PORTAL_PORT = int(os.getenv("WEB_PORTAL_PORT", "5050"))
 OMNIROUTE_PORT = int(os.getenv("OMNIROUTE_PORT", "20128"))
 OMNIROUTE_BASE_URL = os.getenv("OMNIROUTE_BASE_URL", f"http://localhost:{OMNIROUTE_PORT}/v1")
+OMNIROUTE_MODEL = os.getenv("OMNIROUTE_MODEL", "ddgw/mistral-small-2603")
 
 # API Keys
 OMNIROUTE_API_KEY = os.getenv("OMNIROUTE_API_KEY", "")

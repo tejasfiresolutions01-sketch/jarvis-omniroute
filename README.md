@@ -55,8 +55,12 @@ J.A.R.V.I.S. is integrated with [**OmniRoute**](https://github.com/diegosouzapw/
 
 ### Features of the OmniRoute Bridge:
 1. **Unified Endpoint:** Routes cognitive reasoning through `http://localhost:20128/v1` via OpenAI-compatible API schemas.
-2. **Provider Agnostic:** Effortlessly load balances queries across local models (Ollama, vLLM, LM Studio) and cloud frontier models (Gemini, Claude, GPT-4o).
-3. **Graceful Failover:** If OmniRoute is not currently running or takes longer than 6 seconds to respond, J.A.R.V.I.S. automatically routes directly to configured cloud providers or drops down into the offline deterministic execution matrix without interrupting user operations.
+2. **Zero-Cost Free Providers Cascade:** Natively pre-configured to cascade through free zero-credit models without requiring paid API tokens:
+   - `ddgw/mistral-small-2603` (Fast, highly articulate British butler cadence)
+   - `ddgw/gpt-5.4-mini` (High-efficiency reasoning)
+   - `ddgw/gpt-5.6-luna` (Advanced synthesis)
+   - `auto/best-chat` / `auto` (Self-healing free pool router)
+3. **Graceful Failover:** If OmniRoute is not running or takes longer than 5.5s to respond, J.A.R.V.I.S. automatically fails over to direct cloud providers or immediately executes via the offline deterministic matrix.
 
 ### Configuration (`.env`):
 ```ini
@@ -64,6 +68,7 @@ J.A.R.V.I.S. is integrated with [**OmniRoute**](https://github.com/diegosouzapw/
 OMNIROUTE_PORT=20128
 OMNIROUTE_BASE_URL=http://localhost:20128/v1
 OMNIROUTE_API_KEY=your_omniroute_token_if_configured
+OMNIROUTE_MODEL=ddgw/mistral-small-2603
 ```
 
 ---
