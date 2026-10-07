@@ -17,19 +17,19 @@ def generate_executive_briefing() -> str:
     lines = [
         f"{greeting}, sir. Protocol Sunrise initialized at {time_str} on {date_str}.",
         "",
-        "── SYSTEM TELEMETRY ──"
+        "-- SYSTEM TELEMETRY --"
     ]
 
     vitals = system_controller.get_vitals()
     lines.append(f"Hardware status is nominal: CPU is at {vitals['cpu_usage']}, RAM load is {vitals['ram_usage']}, and disk space remaining is {vitals['disk_free']}.")
 
     lines.append("")
-    lines.append("── METEOROLOGICAL TELEMETRY ──")
+    lines.append("-- METEOROLOGICAL TELEMETRY --")
     weather_summary = get_weather()
     lines.append(weather_summary)
 
     lines.append("")
-    lines.append("── AGENDA & ITINERARY ──")
+    lines.append("-- AGENDA & ITINERARY --")
     today_str = date.today().strftime("%Y-%m-%d")
     events = schedule_manager.get_events_for_date(today_str)
     if not events:
