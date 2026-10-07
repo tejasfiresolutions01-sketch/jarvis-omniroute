@@ -20,6 +20,7 @@ from tools.network_scanner import network_scanner
 from tools.git_controller import git_controller
 from tools.clipboard_sentinel import clipboard_sentinel
 from tools.system_optimizer import system_optimizer
+from tools.screen_reader import screen_reader
 from core.schedule_manager import schedule_manager
 from core.online_intelligence import online_intelligence
 from core.vector_memory import vector_memory
@@ -75,7 +76,11 @@ class TaskOrchestrator:
         "save_clipboard_to_memory": lambda category="note": clipboard_sentinel.save_clipboard_to_memory(str(category)),
         # Autonomous System Optimizer & Hardware Janitor
         "optimize_system": lambda: system_optimizer.optimize_all(),
-        "top_processes": lambda limit=5: system_optimizer.format_top_processes_summary(int(limit))
+        "top_processes": lambda limit=5: system_optimizer.format_top_processes_summary(int(limit)),
+        # Context-Aware Optical Screen Reader & OCR Intelligence
+        "read_screen": lambda: screen_reader.read_screen_text() or "No legible text resolved on display.",
+        "read_active_window": lambda: screen_reader.read_active_window_text() or "No legible text resolved in active window.",
+        "analyze_screen": lambda query="Explain what is visible on screen": screen_reader.analyze_screen(str(query))
     }
 
     SYSTEM_PROMPT = (
@@ -123,7 +128,10 @@ class TaskOrchestrator:
         "- fix_clipboard_code()\n"
         "- save_clipboard_to_memory(category='note')\n"
         "- optimize_system()\n"
-        "- top_processes(limit=5)\n\n"
+        "- top_processes(limit=5)\n"
+        "- read_screen()\n"
+        "- read_active_window()\n"
+        "- analyze_screen(query='what is on my screen')\n\n"
         "Guidelines:\n"
         "1. For multi-step tasks, emit all necessary CALL lines in logical sequence.\n"
         "2. If no tools are required, answer directly with authentic British butler cadence.\n"
@@ -249,7 +257,7 @@ class TaskOrchestrator:
                     summaries.append(f"{out}")
                 elif tool in ["git_diff", "git_log"]:
                     summaries.append(f"{str(out)[:120]}")
-                elif tool in ["explain_clipboard", "fix_clipboard_code", "save_clipboard_to_memory", "optimize_system", "top_processes"]:
+                elif tool in ["explain_clipboard", "fix_clipboard_code", "save_clipboard_to_memory", "optimize_system", "top_processes", "read_screen", "read_active_window", "analyze_screen"]:
                     summaries.append(f"{out}")
                 else:
                     summaries.append(f"{tool} completed: {str(out)[:100]}")

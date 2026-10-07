@@ -302,6 +302,30 @@ class LocalIntelligence:
             return True, system_optimizer.format_top_processes_summary()
 
         # ─────────────────────────────────────────────────────────────────────
+        # 5g. Context-Aware Screen Reader & Optical Intelligence
+        # ─────────────────────────────────────────────────────────────────────
+        if any(p in clean_lower for p in [
+            "read my screen", "read screen", "what is on my screen", "whats on my screen",
+            "what's on my screen", "read the screen", "inspect screen text"
+        ]):
+            from tools.screen_reader import screen_reader
+            return True, screen_reader.analyze_screen("Explain what is visible on my screen")
+
+        if any(p in clean_lower for p in [
+            "read active window", "read this window", "what is in this window",
+            "read current window", "summarize active window"
+        ]):
+            from tools.screen_reader import screen_reader
+            return True, screen_reader.analyze_screen("Summarize the contents of the active foreground window")
+
+        if any(p in clean_lower for p in [
+            "what error is on my screen", "read the error", "explain screen error",
+            "what error is this", "diagnose screen error"
+        ]):
+            from tools.screen_reader import screen_reader
+            return True, screen_reader.analyze_screen("Diagnose and explain the error or traceback currently shown on screen")
+
+        # ─────────────────────────────────────────────────────────────────────
         # 6. Time & Date Directives
         # ─────────────────────────────────────────────────────────────────────
         if any(p in clean_lower for p in ["what time is it", "current time", "what's the time", "whats the time", "tell me the time", "time now"]):
