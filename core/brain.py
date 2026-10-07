@@ -15,6 +15,7 @@ from core.online_intelligence import online_intelligence
 from core.task_orchestrator import task_orchestrator
 from memory.memory_store import memory
 from core.vector_memory import vector_memory
+from core.cognitive_memory import cognitive_memory
 from tools.system_controller import system_controller
 import config
 
@@ -31,8 +32,9 @@ class JarvisBrain:
 
         clean_prompt = user_prompt.strip()
 
-        # 1. Log user directive to permanent episodic memory
+        # 1. Log user directive to permanent episodic memory & auto-extract cognitive facts
         memory.log_interaction("USER", clean_prompt)
+        cognitive_memory.auto_extract_and_learn(clean_prompt)
 
         # 2. Asimov's Prime Directive (Human Safety Guardrail)
         is_safe, refusal_reason = asimov_guard.evaluate_safety(clean_prompt)
@@ -124,15 +126,28 @@ class JarvisBrain:
             conversation_memory.add_turn("assistant", local_res)
             memory.log_interaction("JARVIS (Local Core)", local_res)
             vector_memory.index_interaction(clean_prompt, local_res)
+            cognitive_memory.record_episode(
+                f"User directive: {clean_prompt} -> J.A.R.V.I.S.: {local_res[:100]}",
+                episode_type="local_execution",
+                importance=4
+            )
             return enforce_single_question(local_res)
 
-        # 11. Online Cognitive Reasoning with Long-Term Neural RAG (OmniRoute / Cloud AI)
+        # 11. Online Cognitive Reasoning with Long-Term Neural RAG & Cognitive State
         redacted_prompt = credential_guardian.redact(clean_prompt)
         rag_context = vector_memory.recall_context(clean_prompt)
-        online_res = online_intelligence.query(redacted_prompt, context=rag_context)
+        cog_context = cognitive_memory.synthesize_context(clean_prompt)
+        full_context = f"{cog_context}\n\n{rag_context}".strip() if rag_context else cog_context
+
+        online_res = online_intelligence.query(redacted_prompt, context=full_context)
         if online_res:
             memory.log_interaction("JARVIS (Online Core)", online_res)
             vector_memory.index_interaction(clean_prompt, online_res)
+            cognitive_memory.record_episode(
+                f"User: {clean_prompt} -> J.A.R.V.I.S.: {online_res[:120]}",
+                episode_type="cognitive_reasoning",
+                importance=5
+            )
             return enforce_single_question(online_res)
 
         # 12. Graceful Offline Butler Fallback (When no cloud model is reached)
@@ -142,6 +157,11 @@ class JarvisBrain:
         )
         memory.log_interaction("JARVIS (Butler Core)", fallback_msg)
         vector_memory.index_interaction(clean_prompt, fallback_msg)
+        cognitive_memory.record_episode(
+            f"User: {clean_prompt} -> J.A.R.V.I.S. (Offline Butler Fallback)",
+            episode_type="fallback",
+            importance=2
+        )
         return enforce_single_question(fallback_msg)
 
 # Global singleton

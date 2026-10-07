@@ -6,6 +6,7 @@ from core.schedule_manager import schedule_manager
 from core.learning_matrix import learning_matrix
 from memory.memory_store import memory
 from core.vector_memory import vector_memory
+from core.cognitive_memory import cognitive_memory
 import config
 
 class LocalIntelligence:
@@ -430,6 +431,13 @@ class LocalIntelligence:
                 return True, f"According to your long-term neural memory records, sir:\n{formatted_items}"
             else:
                 return True, f"I could not locate any specific records matching '{mem_target}' in your long-term neural memory, sir."
+
+        # ─────────────────────────────────────────────────────────────────────
+        # 7c. Multi-Store Cognitive Memory & Introspection
+        # ─────────────────────────────────────────────────────────────────────
+        is_cog, cog_res = cognitive_memory.handle_cognitive_directive(clean)
+        if is_cog:
+            return True, cog_res
 
         # ─────────────────────────────────────────────────────────────────────
         # 8. Butler Etiquette & Human Conversational Directives
