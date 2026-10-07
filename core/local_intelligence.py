@@ -277,6 +277,31 @@ class LocalIntelligence:
             return True, clipboard_sentinel.summarize_clipboard()
 
         # ─────────────────────────────────────────────────────────────────────
+        # 5f. Autonomous System Optimization & Hardware Janitor
+        # ─────────────────────────────────────────────────────────────────────
+        if any(p in clean_lower for p in [
+            "optimize system", "optimize memory", "clean ram", "free up ram",
+            "free up memory", "clean system", "flush memory", "flush ram"
+        ]):
+            from tools.system_optimizer import system_optimizer
+            return True, system_optimizer.optimize_all()
+
+        if any(p in clean_lower for p in [
+            "clean temporary files", "clean temp files", "purge temp files",
+            "clean cache", "clear cache", "purge cache"
+        ]):
+            from tools.system_optimizer import system_optimizer
+            res = system_optimizer.clean_temp_cache()
+            return True, f"Temporary file purge complete, sir. Swept {res['files_deleted']} files recovering {res['space_freed_mb']} MB of disk space."
+
+        if any(p in clean_lower for p in [
+            "who is using the most ram", "top memory processes", "top processes",
+            "resource hogs", "top ram processes", "what is using ram"
+        ]):
+            from tools.system_optimizer import system_optimizer
+            return True, system_optimizer.format_top_processes_summary()
+
+        # ─────────────────────────────────────────────────────────────────────
         # 6. Time & Date Directives
         # ─────────────────────────────────────────────────────────────────────
         if any(p in clean_lower for p in ["what time is it", "current time", "what's the time", "whats the time", "tell me the time", "time now"]):

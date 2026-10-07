@@ -6,6 +6,7 @@ import time
 from core.brain import brain
 from core.voice import speak, stop_speaking
 from core.listener import listener
+from core.audio_visualizer import audio_visualizer
 from tools.global_hotkey import global_hotkey
 import config
 
@@ -49,6 +50,9 @@ class TacticalHUD:
         # Start system-wide global hotkey listener (Ctrl+Alt+J / Ctrl+Shift+J)
         global_hotkey.start(callback=self.summon_from_hotkey)
 
+        # Start Live Audio FFT Reactive Visualizer
+        audio_visualizer.start()
+
     def _build_ui(self):
         # Header Frame
         hdr = tk.Frame(self.root, bg="#020813", pady=10)
@@ -76,9 +80,9 @@ class TacticalHUD:
         )
         self.btn_wake.pack(side="right", padx=10)
 
-        # Canvas for Arc Reactor Visualizer
-        self.canvas = tk.Canvas(self.root, width=220, height=220, bg="#020813", highlightthickness=0)
-        self.canvas.pack(pady=6)
+        # Canvas for Arc Reactor Visualizer & 16-Band Real-Time Audio Equalizer
+        self.canvas = tk.Canvas(self.root, width=280, height=245, bg="#020813", highlightthickness=0)
+        self.canvas.pack(pady=4)
 
         # Output Console
         self.console = tk.Text(self.root, height=12, bg=self.dark_blue, fg="#ffffff", font=("Consolas", 10), insertbackground=self.cyan, relief="flat", padx=10, pady=10)
@@ -124,25 +128,68 @@ class TacticalHUD:
 
     def _animate_reactor(self):
         self.canvas.delete("all")
-        cx, cy, r = 110, 110, 80
+        cx, cy, r = 140, 100, 72
         t = time.time() * 2
 
-        # Outer pulsing rings
-        pulse = math.sin(t) * 6
-        self.canvas.create_oval(cx - r - pulse, cy - r - pulse, cx + r + pulse, cy + r + pulse, outline=self.cyan, width=2)
-        self.canvas.create_oval(cx - 50, cy - 50, cx + 50, cy + 50, outline=self.gold, width=3)
-        self.canvas.create_oval(cx - 20, cy - 20, cx + 20, cy + 20, fill=self.cyan, outline="#ffffff")
+        bands = audio_visualizer.get_bands()
+        bars = audio_visualizer.get_bars()
 
-        # Rotating spokes
+        energy = bands["rms"]
+        low = bands["low"]
+        mid = bands["mid"]
+        state = bands.get("state", "idle")
+
+        # Color shifting based on butler state & acoustic energy
+        if state == "listening" or energy > 0.18:
+            core_fill = self.gold
+            spoke_color = self.gold
+            ring_outline = "#ffaa00"
+            ring_width = 3
+        elif state == "speaking":
+            core_fill = "#ffaa00"
+            spoke_color = self.cyan
+            ring_outline = self.cyan
+            ring_width = 3
+        else:
+            core_fill = self.cyan
+            spoke_color = self.cyan
+            ring_outline = self.cyan
+            ring_width = 2
+
+        # Outer pulsing rings dynamically expanded by bass frequencies
+        pulse = (low * 20.0) + (math.sin(t) * 3)
+        self.canvas.create_oval(cx - r - pulse, cy - r - pulse, cx + r + pulse, cy + r + pulse, outline=ring_outline, width=ring_width)
+        self.canvas.create_oval(cx - 45, cy - 45, cx + 45, cy + 45, outline=self.gold, width=3)
+
+        # Core reactor dot expanded by loudness
+        core_r = 18 + int(energy * 10)
+        self.canvas.create_oval(cx - core_r, cy - core_r, cx + core_r, cy + core_r, fill=core_fill, outline="#ffffff")
+
+        # Rotating spokes dynamically stretched by speech mid frequencies
+        spoke_stretch = mid * 26.0
         for i in range(8):
             ang = t + i * (math.pi / 4)
-            x1 = cx + 55 * math.cos(ang)
-            y1 = cy + 55 * math.sin(ang)
-            x2 = cx + 75 * math.cos(ang)
-            y2 = cy + 75 * math.sin(ang)
-            self.canvas.create_line(x1, y1, x2, y2, fill=self.cyan, width=2)
+            x1 = cx + 50 * math.cos(ang)
+            y1 = cy + 50 * math.sin(ang)
+            x2 = cx + (70 + spoke_stretch) * math.cos(ang)
+            y2 = cy + (70 + spoke_stretch) * math.sin(ang)
+            self.canvas.create_line(x1, y1, x2, y2, fill=spoke_color, width=2)
 
-        self.root.after(50, self._animate_reactor)
+        # 16-Band Real-Time Audio Equalizer Bars at base of Arc-Reactor
+        bar_w = 8
+        spacing = 6
+        num_bars = len(bars)
+        total_w = num_bars * (bar_w + spacing) - spacing
+        start_x = cx - (total_w // 2)
+        base_y = 236
+
+        for i, val in enumerate(bars):
+            bx = start_x + i * (bar_w + spacing)
+            bh = int(val * 32.0)
+            b_color = self.gold if (i % 4 == 0 or energy > 0.22) else self.cyan
+            self.canvas.create_rectangle(bx, base_y - bh, bx + bar_w, base_y, fill=b_color, outline="")
+
+        self.root.after(45, self._animate_reactor)
 
     def append_log(self, sender: str, msg: str):
         self.console.config(state="normal")
@@ -174,10 +221,13 @@ class TacticalHUD:
         threading.Thread(target=_listen, daemon=True).start()
 
     def handle_voice_directive(self, text: str):
+        audio_visualizer.set_state("listening")
         self.root.after(0, lambda: self.append_log("USER (Voice)", text))
         res = brain.think(text)
         self.root.after(0, lambda: self.append_log("J.A.R.V.I.S.", res))
+        audio_visualizer.set_state("speaking")
         speak(res)
+        audio_visualizer.set_state("idle")
 
     def send_directive(self):
         cmd = self.entry.get().strip()
@@ -187,9 +237,12 @@ class TacticalHUD:
         self.append_log("USER", cmd)
 
         def _proc():
+            audio_visualizer.set_state("listening")
             res = brain.think(cmd)
             self.root.after(0, lambda: self.append_log("J.A.R.V.I.S.", res))
+            audio_visualizer.set_state("speaking")
             speak(res)
+            audio_visualizer.set_state("idle")
 
         threading.Thread(target=_proc, daemon=True).start()
 
@@ -219,6 +272,7 @@ class TacticalHUD:
             self.root.mainloop()
         finally:
             global_hotkey.stop()
+            audio_visualizer.stop()
 
 def launch_hud():
     hud = TacticalHUD()

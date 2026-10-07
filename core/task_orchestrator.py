@@ -19,6 +19,7 @@ from tools.gui_controller import gui_controller
 from tools.network_scanner import network_scanner
 from tools.git_controller import git_controller
 from tools.clipboard_sentinel import clipboard_sentinel
+from tools.system_optimizer import system_optimizer
 from core.schedule_manager import schedule_manager
 from core.online_intelligence import online_intelligence
 from core.vector_memory import vector_memory
@@ -71,7 +72,10 @@ class TaskOrchestrator:
         "read_clipboard": lambda: clipboard_sentinel.get_clipboard_text(),
         "explain_clipboard": lambda: clipboard_sentinel.explain_clipboard(),
         "fix_clipboard_code": lambda: clipboard_sentinel.fix_clipboard_code()[1],
-        "save_clipboard_to_memory": lambda category="note": clipboard_sentinel.save_clipboard_to_memory(str(category))
+        "save_clipboard_to_memory": lambda category="note": clipboard_sentinel.save_clipboard_to_memory(str(category)),
+        # Autonomous System Optimizer & Hardware Janitor
+        "optimize_system": lambda: system_optimizer.optimize_all(),
+        "top_processes": lambda limit=5: system_optimizer.format_top_processes_summary(int(limit))
     }
 
     SYSTEM_PROMPT = (
@@ -117,7 +121,9 @@ class TaskOrchestrator:
         "- read_clipboard()\n"
         "- explain_clipboard()\n"
         "- fix_clipboard_code()\n"
-        "- save_clipboard_to_memory(category='note')\n\n"
+        "- save_clipboard_to_memory(category='note')\n"
+        "- optimize_system()\n"
+        "- top_processes(limit=5)\n\n"
         "Guidelines:\n"
         "1. For multi-step tasks, emit all necessary CALL lines in logical sequence.\n"
         "2. If no tools are required, answer directly with authentic British butler cadence.\n"
@@ -243,7 +249,7 @@ class TaskOrchestrator:
                     summaries.append(f"{out}")
                 elif tool in ["git_diff", "git_log"]:
                     summaries.append(f"{str(out)[:120]}")
-                elif tool in ["explain_clipboard", "fix_clipboard_code", "save_clipboard_to_memory"]:
+                elif tool in ["explain_clipboard", "fix_clipboard_code", "save_clipboard_to_memory", "optimize_system", "top_processes"]:
                     summaries.append(f"{out}")
                 else:
                     summaries.append(f"{tool} completed: {str(out)[:100]}")
