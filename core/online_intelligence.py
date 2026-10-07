@@ -58,7 +58,33 @@ class OnlineIntelligence:
         except Exception:
             pass
 
-        # 2. Direct Gemini Fallback if key is present
+        # 2. Direct OpenAI Fallback if key is present
+        if config.OPENAI_API_KEY:
+            try:
+                o_headers = {
+                    "Authorization": f"Bearer {config.OPENAI_API_KEY}",
+                    "Content-Type": "application/json"
+                }
+                o_payload = {
+                    "model": "gpt-4o-mini",
+                    "messages": [
+                        {"role": "system", "content": f"{self.SYSTEM_INSTRUCTION}\n\nContext:\n{context}" if context else self.SYSTEM_INSTRUCTION},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "max_tokens": 800,
+                    "temperature": 0.7
+                }
+                o_resp = requests.post("https://api.openai.com/v1/chat/completions", headers=o_headers, json=o_payload, timeout=6.0)
+                if o_resp.status_code == 200:
+                    choices = o_resp.json().get("choices", [])
+                    if choices:
+                        content = choices[0].get("message", {}).get("content", "").strip()
+                        if content:
+                            return content
+            except Exception:
+                pass
+
+        # 3. Direct Gemini Fallback if key is present
         if config.GEMINI_API_KEY:
             try:
                 from google import genai

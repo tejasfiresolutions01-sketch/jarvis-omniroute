@@ -140,6 +140,13 @@ class LocalIntelligence:
             )
 
         # ─────────────────────────────────────────────────────────────────────
+        # 5b. OmniRoute Multi-Provider Gateway Status
+        # ─────────────────────────────────────────────────────────────────────
+        if any(p in clean_lower for p in ["omniroute status", "omniroute", "is omniroute running", "check omniroute", "omniroute gateway"]):
+            from tools.omniroute_controller import omniroute_controller
+            return True, omniroute_controller.get_butler_summary()
+
+        # ─────────────────────────────────────────────────────────────────────
         # 6. Time & Date Directives
         # ─────────────────────────────────────────────────────────────────────
         if any(p in clean_lower for p in ["what time is it", "current time", "what's the time", "whats the time", "tell me the time", "time now"]):

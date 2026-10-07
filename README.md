@@ -104,6 +104,7 @@ c:\jarvis ai\
 ├── tools/
 │   ├── briefing_tools.py                       # Protocol Sunrise executive briefing
 │   ├── camera_tools.py                         # Optical webcam inspection
+│   ├── omniroute_controller.py                 # OmniRoute gateway supervisor & telemetry
 │   ├── schedule_tools.py                       # Agenda NLP tool hooks
 │   ├── shortcut_creator.py                     # Desktop shortcut installer
 │   ├── system_controller.py                    # Detached non-blocking Windows process launcher
@@ -145,6 +146,7 @@ c:\jarvis ai\
 | **Power** | *"Lets Sleep Jarvis"*, *"Shut down"* | Verified power sentinel shutdown / sleep sequence |
 | **Media/Volume**| *"Volume up"*, *"Mute"*, *"Play music"*, *"Pause"* | Hardware audio level & media transport control |
 | **Apps** | *"Open Chrome"*, *"Open Notepad"*, *"Open Calculator"* | Detached Windows process launcher |
+| **OmniRoute** | *"OmniRoute status"*, *"Check OmniRoute"* | Live telemetry & model metrics from OmniRoute local gateway (:20128) |
 
 ---
 
