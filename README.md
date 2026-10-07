@@ -98,6 +98,10 @@ J.A.R.V.I.S. features continuous hands-free voice dialogue with adaptive pause d
    - Screen inspection & webcam vision
    - Safe workspace file creation, reading, and manipulation
    - Desktop and application launching / process control
+7. **Autonomous Desktop GUI Automation (`tools/gui_controller.py`):**
+   - **Computer-Use Capabilities:** Mouse clicks, precision movement, scrolling, keyboard typing, hotkey execution (`ctrl+s`, `win+d`, `alt+tab`).
+   - **Window & Browser Navigation:** Split window snapping (`snap window left/right`, maximize, minimize), tab manipulation (`new tab`, `close tab`, `refresh`).
+   - **Compound Routines (`open_and_type`):** Launches apps, writes text via fast clipboard pasting, and saves files autonomously.
 
 ---
 

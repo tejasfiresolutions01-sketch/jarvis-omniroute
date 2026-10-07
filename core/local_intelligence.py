@@ -98,6 +98,45 @@ class LocalIntelligence:
             return True, res
 
         # ─────────────────────────────────────────────────────────────────────
+        # 4a. Physical Desktop GUI Navigation (Computer-Use)
+        # ─────────────────────────────────────────────────────────────────────
+        if any(p in clean_lower for p in ["scroll down", "page down"]):
+            from tools.gui_controller import gui_controller
+            return True, gui_controller.mouse_scroll(-450)
+
+        if any(p in clean_lower for p in ["scroll up", "page up"]):
+            from tools.gui_controller import gui_controller
+            return True, gui_controller.mouse_scroll(450)
+
+        if any(p in clean_lower for p in ["snap window left", "snap left", "window to the left", "left split"]):
+            from tools.gui_controller import gui_controller
+            return True, gui_controller.window_snap("left")
+
+        if any(p in clean_lower for p in ["snap window right", "snap right", "window to the right", "right split"]):
+            from tools.gui_controller import gui_controller
+            return True, gui_controller.window_snap("right")
+
+        if any(p in clean_lower for p in ["maximize window", "maximize this window", "maximize"]):
+            from tools.gui_controller import gui_controller
+            return True, gui_controller.window_snap("maximize")
+
+        if any(p in clean_lower for p in ["minimize window", "minimize this window", "minimize all"]):
+            from tools.gui_controller import gui_controller
+            return True, gui_controller.window_snap("minimize")
+
+        if any(p in clean_lower for p in ["new tab", "open new tab", "open a new tab"]):
+            from tools.gui_controller import gui_controller
+            return True, gui_controller.browser_action("new_tab")
+
+        if any(p in clean_lower for p in ["close tab", "close this tab"]):
+            from tools.gui_controller import gui_controller
+            return True, gui_controller.browser_action("close_tab")
+
+        if any(p in clean_lower for p in ["refresh page", "reload page", "refresh tab", "reload tab"]):
+            from tools.gui_controller import gui_controller
+            return True, gui_controller.browser_action("refresh")
+
+        # ─────────────────────────────────────────────────────────────────────
         # 4b. Multimodal Screen & Webcam Vision (PHASE 3)
         # ─────────────────────────────────────────────────────────────────────
         if any(p in clean_lower for p in ["look at my screen", "what is on my screen", "what's on my display", "what is on my display", "analyze screen", "analyze display", "inspect screen", "inspect display"]):

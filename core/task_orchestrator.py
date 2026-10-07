@@ -15,6 +15,7 @@ from tools.vision_tools import capture_and_inspect_display
 from tools.camera_tools import inspect_physical_camera
 from tools.weather_tools import get_weather
 from tools.briefing_tools import generate_executive_briefing
+from tools.gui_controller import gui_controller
 from core.schedule_manager import schedule_manager
 from core.online_intelligence import online_intelligence
 import config
@@ -42,7 +43,15 @@ class TaskOrchestrator:
         "volume_down": lambda: system_controller.volume_down(),
         "toggle_mute": lambda: system_controller.toggle_mute(),
         "add_schedule": lambda text="": schedule_manager.parse_and_handle(text)[1],
-        "execute_shell": lambda cmd="": system_controller.execute_terminal(cmd)
+        "execute_shell": lambda cmd="": system_controller.execute_terminal(cmd),
+        # Desktop GUI Automation Controls (Computer-Use)
+        "mouse_click": lambda x=None, y=None, clicks=1, button="left": gui_controller.mouse_click(int(x) if x else None, int(y) if y else None, int(clicks), str(button)),
+        "mouse_scroll": lambda clicks=0: gui_controller.mouse_scroll(int(clicks)),
+        "keyboard_type": lambda text="", press_enter=False: gui_controller.keyboard_type(str(text), bool(press_enter)),
+        "keyboard_hotkey": lambda keys="": gui_controller.keyboard_hotkey(*[k.strip() for k in keys.split(",")]) if isinstance(keys, str) else gui_controller.keyboard_hotkey(*keys),
+        "window_snap": lambda direction="": gui_controller.window_snap(str(direction)),
+        "browser_action": lambda action="": gui_controller.browser_action(str(action)),
+        "open_and_type": lambda app_name="", text="", save_filename=None: gui_controller.open_and_type(str(app_name), str(text), save_filename)
     }
 
     SYSTEM_PROMPT = (
@@ -69,7 +78,14 @@ class TaskOrchestrator:
         "- volume_down()\n"
         "- toggle_mute()\n"
         "- add_schedule(text='directive')\n"
-        "- execute_shell(cmd='safe command')\n\n"
+        "- execute_shell(cmd='safe command')\n"
+        "- mouse_click(x=100, y=200, clicks=1, button='left')\n"
+        "- mouse_scroll(clicks=-300)\n"
+        "- keyboard_type(text='text to type', press_enter=False)\n"
+        "- keyboard_hotkey(keys='ctrl,s')\n"
+        "- window_snap(direction='left|right|maximize|minimize|desktop')\n"
+        "- browser_action(action='new_tab|close_tab|reopen_tab|refresh|address_bar')\n"
+        "- open_and_type(app_name='notepad', text='content to type', save_filename='notes.txt')\n\n"
         "Guidelines:\n"
         "1. For multi-step tasks, emit all necessary CALL lines in logical sequence.\n"
         "2. If no tools are required, answer directly with authentic British butler cadence.\n"
