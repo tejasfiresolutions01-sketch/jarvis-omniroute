@@ -67,8 +67,8 @@ class VoiceListener:
                     ambient_frames.append(chunk)
                 ambient_arr = np.concatenate(ambient_frames).astype(np.float32)
                 ambient_rms = np.sqrt(np.mean(ambient_arr ** 2))
-                # Set dynamic speech energy threshold
-                speech_threshold = max(380.0, float(ambient_rms * 1.7))
+                # Set dynamic speech energy threshold (sensitive to normal speaking volumes)
+                speech_threshold = max(160.0, float(ambient_rms * 1.35))
 
                 # 2. Main recording loop
                 while True:
@@ -169,12 +169,14 @@ class VoiceListener:
         if text and is_auth:
             return text
 
-        # Fallback to console input if mic times out or environment is silent
-        try:
-            return input(prompt)
-        except (EOFError, Exception):
-            time.sleep(1)
-            return ""
+        # Fallback to console input only if running in an interactive terminal
+        import sys
+        if sys.stdin and hasattr(sys.stdin, "isatty") and sys.stdin.isatty():
+            try:
+                return input(prompt)
+            except (EOFError, Exception):
+                pass
+        return ""
 
     def start_conversation_session(self, process_command_callback: Callable[[str], bool]):
         """
@@ -193,9 +195,11 @@ class VoiceListener:
             pass
 
         while self.in_conversation_mode:
-            # Wait for previous vocalization to finish before listening
-            while is_speaking:
+            # Wait for previous vocalization to finish before opening microphone
+            import core.voice as voice
+            while voice.check_is_speaking():
                 time.sleep(0.1)
+            time.sleep(0.2) # Acoustic buffer to clear speaker echo
 
             text, is_auth = self.capture_and_authenticate(
                 timeout=self.conversational_idle_timeout,

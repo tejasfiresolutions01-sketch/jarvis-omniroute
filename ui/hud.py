@@ -119,6 +119,20 @@ class TacticalHUD:
         )
         self.btn_wake.pack(side="right", padx=10)
 
+        # Voice Conversation Mode Button
+        self.conversation_active = False
+        self.btn_conversation = tk.Button(
+            sub_frame,
+            text="💬 CONVERSATION",
+            font=("Segoe UI", 8, "bold"),
+            fg=self.gold,
+            bg="#261b04",
+            relief="flat",
+            padx=8,
+            command=self.toggle_conversation_mode
+        )
+        self.btn_conversation.pack(side="right", padx=6)
+
         # Canvas for Arc Reactor Visualizer & 16-Band Real-Time Audio Equalizer
         self.canvas = tk.Canvas(self.root, width=280, height=245, bg="#020813", highlightthickness=0)
         self.canvas.pack(pady=4)
@@ -267,6 +281,43 @@ class TacticalHUD:
         audio_visualizer.set_state("speaking")
         speak(res)
         audio_visualizer.set_state("idle")
+
+    def toggle_conversation_mode(self):
+        """Toggles continuous multi-turn hands-free voice conversation."""
+        self.conversation_active = not self.conversation_active
+        if self.conversation_active:
+            self.btn_conversation.config(text="💬 TALK: ACTIVE", fg="#000000", bg=self.gold)
+            self.append_log("SYSTEM", "Continuous voice conversation mode engaged. Speak naturally with Jarvis.")
+            speak("Continuous voice conversation mode engaged, sir. I am listening continuously.")
+
+            def _conv_worker():
+                listener.start_conversation_session(self._handle_conversation_turn)
+                self.conversation_active = False
+                self.root.after(0, lambda: self.btn_conversation.config(text="💬 CONVERSATION", fg=self.gold, bg="#261b04"))
+                self.root.after(0, lambda: self.append_log("SYSTEM", "Voice conversation session concluded. Reverting to ambient standby."))
+
+            threading.Thread(target=_conv_worker, daemon=True).start()
+        else:
+            listener.in_conversation_mode = False
+            self.btn_conversation.config(text="💬 CONVERSATION", fg=self.gold, bg="#261b04")
+            speak("Standing down continuous conversation mode, sir.")
+            self.append_log("SYSTEM", "Voice conversation disengaged.")
+
+    def _handle_conversation_turn(self, user_text: str) -> bool:
+        if not user_text:
+            return True
+        audio_visualizer.set_state("listening")
+        self.root.after(0, lambda: self.append_log("USER (Voice)", user_text))
+        res = brain.think(user_text)
+        self.root.after(0, lambda: self.append_log("J.A.R.V.I.S.", res))
+        audio_visualizer.set_state("speaking")
+        from core.voice import speak_sync
+        speak_sync(res)
+        audio_visualizer.set_state("idle")
+        lower = user_text.lower()
+        if any(w in lower for w in listener.EXIT_CONVERSATION_WORDS):
+            return False
+        return True
 
     def send_directive(self):
         cmd = self.entry.get().strip()

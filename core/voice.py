@@ -10,6 +10,11 @@ _speak_lock = threading.Lock()
 _current_process = None
 is_speaking = False
 
+def check_is_speaking() -> bool:
+    """Returns True if J.A.R.V.I.S. is currently producing acoustic speech."""
+    global is_speaking
+    return is_speaking
+
 def stop_speaking():
     """Acoustic Barge-in: immediately halts any in-progress vocalization."""
     global is_speaking
@@ -23,7 +28,7 @@ def stop_speaking():
 
 def speak(text: str):
     """
-    Synthesizes speech using British Butler persona.
+    Synthesizes speech using British Butler persona asynchronously.
     Uses edge-tts (en-GB-RyanNeural) when online, with instant offline fallback
     to Windows native SAPI5 (pyttsx3) so voice always functions offline!
     Supports acoustic barge-in / interruption.
@@ -33,6 +38,12 @@ def speak(text: str):
 
     clean_text = text.strip()
     threading.Thread(target=_speak_worker, args=(clean_text,), daemon=True).start()
+
+def speak_sync(text: str):
+    """Synchronous speech synthesis; blocks until playback completes or barged-in."""
+    if not text or not text.strip():
+        return
+    _speak_worker(text.strip())
 
 def _speak_worker(text: str):
     global is_speaking
