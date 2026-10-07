@@ -82,13 +82,13 @@ class ScreenReader:
 
         return info
 
-    def capture_fullscreen(self, save_path: Optional[Path] = None) -> Path:
+    def capture_fullscreen(self, save_path: Optional[Path] = None) -> Optional[Path]:
         """Captures full display screen snapshot."""
         target = save_path or (self.temp_dir / "screen_capture.png")
 
         if HAS_MSS:
             try:
-                with mss.mss() as sct:
+                with mss.MSS() as sct:
                     monitor = sct.monitors[1] if len(sct.monitors) > 1 else sct.monitors[0]
                     sct_img = sct.grab(monitor)
                     img = Image.frombytes("RGB", sct_img.size, sct_img.bgra, "raw", "BGRX")
@@ -97,11 +97,16 @@ class ScreenReader:
             except Exception:
                 pass
 
-        img = ImageGrab.grab()
-        img.save(target)
-        return target
+        try:
+            img = ImageGrab.grab()
+            img.save(target)
+            return target
+        except Exception:
+            pass
 
-    def capture_active_window(self, save_path: Optional[Path] = None) -> Path:
+        return None
+
+    def capture_active_window(self, save_path: Optional[Path] = None) -> Optional[Path]:
         """Captures only the active foreground window boundary."""
         target = save_path or (self.temp_dir / "window_capture.png")
         info = self.get_active_window_info()
@@ -111,23 +116,22 @@ class ScreenReader:
         if rect and info["width"] > 100 and info["height"] > 100:
             try:
                 full = self.capture_fullscreen()
-                img = Image.open(full)
-                # Crop to window rectangle
-                cropped = img.crop(rect)
-                cropped.save(target)
-                return target
+                if full and full.exists():
+                    img = Image.open(full)
+                    cropped = img.crop(rect)
+                    cropped.save(target)
+                    return target
             except Exception:
                 pass
 
-        # Fallback to full screen
         return self.capture_fullscreen(target)
 
-    def extract_text_ocr(self, image_path: Path) -> str:
+    def extract_text_ocr(self, image_path: Optional[Path]) -> str:
         """
         Executes Windows WinRT OCR on an image file.
         Operates 100% locally with zero cloud API keys or external costs.
         """
-        if not image_path.exists():
+        if not image_path or not image_path.exists():
             return ""
 
         if not self.ocr_script.exists():
@@ -157,11 +161,15 @@ class ScreenReader:
     def read_screen_text(self) -> str:
         """Captures full screen and extracts all legible text via OCR."""
         shot = self.capture_fullscreen()
+        if not shot:
+            return ""
         return self.extract_text_ocr(shot)
 
     def read_active_window_text(self) -> str:
         """Captures foreground window and extracts all legible text via OCR."""
         shot = self.capture_active_window()
+        if not shot:
+            return ""
         return self.extract_text_ocr(shot)
 
     def analyze_screen(self, query: str = "Explain what is visible on my screen") -> str:
