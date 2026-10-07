@@ -2,6 +2,12 @@ import os
 import sys
 import winreg
 from pathlib import Path
+
+# Ensure project root is in sys.path
+_ROOT = Path(__file__).resolve().parent.parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
 import config
 
 REG_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"

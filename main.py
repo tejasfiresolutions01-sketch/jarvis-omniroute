@@ -14,9 +14,20 @@ import config
 
 _singleton_mutex = None
 
+def _attach_to_interactive_desktop():
+    """Attaches current thread to interactive user desktop (Default) on Windows."""
+    try:
+        user32 = ctypes.windll.user32
+        hdesk = user32.OpenDesktopW("Default", 0, False, 0x01FF)
+        if hdesk:
+            user32.SetThreadDesktop(hdesk)
+    except Exception:
+        pass
+
 def ensure_single_instance() -> bool:
     """Guarantees only one J.A.R.V.I.S. process runs concurrently."""
     global _singleton_mutex
+    _attach_to_interactive_desktop()
     kernel32 = ctypes.windll.kernel32
     user32 = ctypes.windll.user32
     MUTEX_NAME = "Local\\JARVIS_ULTIMATE_MUTEX"
@@ -27,9 +38,17 @@ def ensure_single_instance() -> bool:
         hwnd = user32.FindWindowW(None, config.HUD_WINDOW_TITLE)
         if hwnd:
             user32.ShowWindow(hwnd, 9) # SW_RESTORE
+            user32.BringWindowToTop(hwnd)
             user32.SetForegroundWindow(hwnd)
-            print("[Single Instance]: J.A.R.V.I.S. is already active. Elevating existing display.")
-        return False
+            try:
+                user32.SwitchToThisWindow(hwnd, True)
+            except Exception:
+                pass
+            print("[Single Instance]: J.A.R.V.I.S. Tactical HUD is already active. Elevating display to foreground.")
+            return False
+        else:
+            print("[Single Instance]: Background instance detected without active display. Initializing HUD display.")
+            return True
     return True
 
 def process_command(user_input: str) -> bool:
@@ -150,4 +169,13 @@ def main():
             run_cli()
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except BaseException as e:
+        import traceback
+        with open("logs/main_exit.log", "a", encoding="utf-8") as f:
+            f.write(f"EXITED WITH EXCEPTION: {type(e).__name__}: {e}\n{traceback.format_exc()}\n")
+        raise
+    else:
+        with open("logs/main_exit.log", "a", encoding="utf-8") as f:
+            f.write("MAIN FINISHED NORMALLY\n")

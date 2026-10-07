@@ -10,6 +10,17 @@ from core.audio_visualizer import audio_visualizer
 from tools.global_hotkey import global_hotkey
 import config
 
+def _attach_to_interactive_desktop():
+    """Attaches current thread to interactive user desktop (Default) on Windows."""
+    try:
+        import ctypes
+        user32 = ctypes.windll.user32
+        hdesk = user32.OpenDesktopW("Default", 0, False, 0x01FF)
+        if hdesk:
+            user32.SetThreadDesktop(hdesk)
+    except Exception:
+        pass
+
 class TacticalHUD:
     """
     Mark-III Stark Industries Holographic Tactical HUD.
@@ -19,14 +30,25 @@ class TacticalHUD:
     """
 
     def __init__(self):
+        _attach_to_interactive_desktop()
         self.root = tk.Tk()
         self.root.title(config.HUD_WINDOW_TITLE)
-        self.root.geometry("920x680")
+        # Center Tactical HUD dynamically on display
+        w, h = 920, 680
+        self.root.update_idletasks()
+        sw = self.root.winfo_screenwidth()
+        sh = self.root.winfo_screenheight()
+        x = max(0, (sw - w) // 2)
+        y = max(0, (sh - h) // 2)
+        self.root.geometry(f"{w}x{h}+{x}+{y}")
         self.root.configure(bg="#020813")
 
         # Set application icon if available
         try:
-            self.root.iconbitmap("assets/ironman.ico")
+            if config.IRONMAN_ICO_PATH.exists():
+                self.root.iconbitmap(str(config.IRONMAN_ICO_PATH))
+            else:
+                self.root.iconbitmap("assets/ironman.ico")
         except Exception:
             pass
 
@@ -52,6 +74,23 @@ class TacticalHUD:
 
         # Start Live Audio FFT Reactive Visualizer
         audio_visualizer.start()
+
+        # Elevate Tactical HUD to foreground upon opening
+        self.root.deiconify()
+        self.root.lift()
+        self.root.attributes("-topmost", True)
+        self.root.after(600, lambda: self.root.attributes("-topmost", False))
+        self.root.focus_force()
+
+        try:
+            import ctypes
+            hwnd = ctypes.windll.user32.FindWindowW(None, config.HUD_WINDOW_TITLE)
+            if hwnd:
+                ctypes.windll.user32.ShowWindow(hwnd, 9) # SW_RESTORE
+                ctypes.windll.user32.BringWindowToTop(hwnd)
+                ctypes.windll.user32.SetForegroundWindow(hwnd)
+        except Exception:
+            pass
 
     def _build_ui(self):
         # Header Frame
@@ -260,8 +299,17 @@ class TacticalHUD:
         self.root.deiconify()
         self.root.lift()
         self.root.attributes("-topmost", True)
-        self.root.after_idle(self.root.attributes, "-topmost", False)
+        self.root.after(600, lambda: self.root.attributes("-topmost", False))
         self.root.focus_force()
+        try:
+            import ctypes
+            hwnd = ctypes.windll.user32.FindWindowW(None, config.HUD_WINDOW_TITLE)
+            if hwnd:
+                ctypes.windll.user32.ShowWindow(hwnd, 9) # SW_RESTORE
+                ctypes.windll.user32.BringWindowToTop(hwnd)
+                ctypes.windll.user32.SetForegroundWindow(hwnd)
+        except Exception:
+            pass
         self.entry.focus_set()
         self.append_log("SYSTEM", "Tactical HUD summoned from stealth mode.")
 

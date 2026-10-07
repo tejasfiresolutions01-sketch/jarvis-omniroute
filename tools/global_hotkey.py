@@ -47,6 +47,13 @@ class GlobalHotkeyManager:
 
     def _message_loop(self):
         """Win32 thread message loop for RegisterHotKey / PeekMessageW."""
+        try:
+            hdesk = self._user32.OpenDesktopW("Default", 0, False, 0x01FF)
+            if hdesk:
+                self._user32.SetThreadDesktop(hdesk)
+        except Exception:
+            pass
+
         combos = [
             # ID 101: Ctrl + Alt + J
             (101, self.MOD_CONTROL | self.MOD_ALT | self.MOD_NOREPEAT, self.VK_J),
