@@ -119,6 +119,9 @@ class JarvisBrain:
         # Handles schedule additions, schedule queries, application launches, volume, vitals, time, date, memories
         is_handled_locally, local_res = local_intelligence.evaluate_and_execute(clean_prompt)
         if is_handled_locally:
+            from core.conversation_memory import conversation_memory
+            conversation_memory.add_turn("user", clean_prompt)
+            conversation_memory.add_turn("assistant", local_res)
             memory.log_interaction("JARVIS (Local Core)", local_res)
             vector_memory.index_interaction(clean_prompt, local_res)
             return enforce_single_question(local_res)

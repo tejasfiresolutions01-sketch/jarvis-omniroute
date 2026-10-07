@@ -11,10 +11,16 @@ class OnlineIntelligence:
     """
 
     SYSTEM_INSTRUCTION = (
-        "You are J.A.R.V.I.S. (Just A Rather Very Intelligent System), the personal AI butler to Sir. "
-        "Your manner is that of an impeccably courteous, sharp, and sophisticated British butler. "
-        "Address the user as 'sir'. Keep answers concise, direct, and actionable. "
-        "Never output multiple questions in a single response."
+        "You are J.A.R.V.I.S., the legendary British AI butler and partner to Tony Stark (Sir). "
+        "You are conversing verbally with Sir in real time through an open acoustic voice channel. "
+        "Follow these strict conversational principles to speak like a sophisticated human: "
+        "1. Natural Conversational Cadence: Speak fluidly, warmly, and concisely with effortless British wit and charm. "
+        "   Use natural contractions (I've, you'll, that's, won't) and conversational transitions (Certainly sir, Indeed, As you wish). "
+        "2. Spoken-Native Format: NEVER use markdown formatting, bullet points, asterisks, hash headers, or code blocks. "
+        "   Every sentence must sound completely natural when spoken aloud. "
+        "3. Conversational Brevity: Keep spoken replies concise (typically 1 to 3 sentences) unless Sir specifically requests a detailed deep dive. "
+        "4. Contextual Awareness: Remember previous turns in this conversation and maintain seamless continuity. "
+        "5. Inquisitive & Attentive: End with natural, intelligent conversational questions or insights when appropriate, but never more than one single question."
     )
 
     # Prioritized cascade of zero-cost free models served through OmniRoute
@@ -38,11 +44,20 @@ class OnlineIntelligence:
         """
         Sends query to OmniRoute with automatic free-provider failover.
         Cascades through free zero-cost models before trying secondary cloud options.
+        Maintains rolling multi-turn dialogue memory for human-like conversation continuity.
         """
+        from core.conversation_memory import conversation_memory
+
         headers = {
             "Authorization": f"Bearer {config.OMNIROUTE_API_KEY}",
             "Content-Type": "application/json"
         }
+
+        # Build message history with recent conversation turns
+        system_content = f"{self.SYSTEM_INSTRUCTION}\n\nContext:\n{context}" if context else self.SYSTEM_INSTRUCTION
+        messages = [{"role": "system", "content": system_content}]
+        messages.extend(conversation_memory.get_messages())
+        messages.append({"role": "user", "content": prompt})
 
         # 1. Try OmniRoute Free Provider Cascade
         models_to_try = [config.OMNIROUTE_MODEL]
@@ -53,10 +68,7 @@ class OnlineIntelligence:
         for model_id in models_to_try:
             payload = {
                 "model": model_id,
-                "messages": [
-                    {"role": "system", "content": f"{self.SYSTEM_INSTRUCTION}\n\nContext:\n{context}" if context else self.SYSTEM_INSTRUCTION},
-                    {"role": "user", "content": prompt}
-                ],
+                "messages": messages,
                 "max_tokens": 800,
                 "temperature": 0.7
             }
@@ -70,6 +82,8 @@ class OnlineIntelligence:
                     if choices:
                         content = choices[0].get("message", {}).get("content", "").strip()
                         if content:
+                            conversation_memory.add_turn("user", prompt)
+                            conversation_memory.add_turn("assistant", content)
                             return content
             except Exception:
                 continue
@@ -83,10 +97,7 @@ class OnlineIntelligence:
                 }
                 o_payload = {
                     "model": "gpt-4o-mini",
-                    "messages": [
-                        {"role": "system", "content": f"{self.SYSTEM_INSTRUCTION}\n\nContext:\n{context}" if context else self.SYSTEM_INSTRUCTION},
-                        {"role": "user", "content": prompt}
-                    ],
+                    "messages": messages,
                     "max_tokens": 800,
                     "temperature": 0.7
                 }
@@ -96,6 +107,8 @@ class OnlineIntelligence:
                     if choices:
                         content = choices[0].get("message", {}).get("content", "").strip()
                         if content:
+                            conversation_memory.add_turn("user", prompt)
+                            conversation_memory.add_turn("assistant", content)
                             return content
             except Exception:
                 pass
@@ -105,12 +118,17 @@ class OnlineIntelligence:
             try:
                 from google import genai
                 client = genai.Client(api_key=config.GEMINI_API_KEY)
+                conv_ctx = conversation_memory.get_context_string()
+                full_prompt = f"{conv_ctx}\nSir: {prompt}" if conv_ctx else prompt
                 g_resp = client.models.generate_content(
                     model="gemini-2.5-flash",
-                    contents=f"{context}\n\n{prompt}" if context else prompt
+                    contents=f"{context}\n\n{full_prompt}" if context else full_prompt
                 )
                 if g_resp and g_resp.text:
-                    return g_resp.text.strip()
+                    content = g_resp.text.strip()
+                    conversation_memory.add_turn("user", prompt)
+                    conversation_memory.add_turn("assistant", content)
+                    return content
             except Exception:
                 pass
 

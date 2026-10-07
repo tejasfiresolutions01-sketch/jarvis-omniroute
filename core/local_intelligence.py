@@ -432,8 +432,13 @@ class LocalIntelligence:
                 return True, f"I could not locate any specific records matching '{mem_target}' in your long-term neural memory, sir."
 
         # ─────────────────────────────────────────────────────────────────────
-        # 8. Butler Etiquette & Identity Directives
+        # 8. Butler Etiquette & Human Conversational Directives
         # ─────────────────────────────────────────────────────────────────────
+        if any(p in clean_lower for p in ["new topic", "change topic", "let's change topic", "change the subject", "reset conversation", "clear conversation context", "start over"]):
+            from core.conversation_memory import conversation_memory
+            conversation_memory.clear()
+            return True, "Understood, sir. Conversational slate cleared. What would you like to explore next?"
+
         if any(clean_lower == p for p in ["hello", "hi", "hey", "good morning", "good afternoon", "good evening", "greetings"]):
             hour = datetime.now().hour
             greeting = "Good morning" if hour < 12 else ("Good afternoon" if hour < 18 else "Good evening")
@@ -446,8 +451,14 @@ class LocalIntelligence:
                 "and executing system directives both offline and online with absolute precision."
             )
 
-        if any(clean_lower == p for p in ["how are you", "status report", "are you ready"]):
+        if any(clean_lower == p for p in ["how are you", "how are you doing", "how's your day", "how is your day"]):
+            return True, "Performing splendidly, sir. All core matrices are calibrated and standing ready for your command. How fares your day?"
+
+        if any(clean_lower == p for p in ["status report", "are you ready", "systems check"]):
             return True, "All internal subroutines are performing at peak efficiency, sir. Ready for your directive."
+
+        if any(clean_lower == p for p in ["thank you", "thanks", "thank you jarvis", "thanks jarvis"]):
+            return True, "Always an honor, sir. Standing ready whenever you require assistance."
 
         # ─────────────────────────────────────────────────────────────────────
         # 9. Simple Offline Mathematical Calculations
