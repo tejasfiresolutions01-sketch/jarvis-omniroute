@@ -38,6 +38,8 @@ def clean_for_speech(text: str) -> str:
         return ""
 
     s = text.strip()
+    # Normalize unicode curly quotes and dashes
+    s = s.replace("’", "'").replace("‘", "'").replace("“", '"').replace("”", '"').replace("—", ", ").replace("–", ", ")
 
     # 1. Remove code blocks
     s = re.sub(r"```[\s\S]*?```", " I have executed the requested code block, sir. ", s)
