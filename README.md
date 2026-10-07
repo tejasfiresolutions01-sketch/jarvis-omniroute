@@ -86,8 +86,13 @@ J.A.R.V.I.S. features continuous hands-free voice dialogue with adaptive pause d
 
 1. **Adaptive End-of-Speech Detection:** Configured with a `2.2s` silence timeout, allowing users to comfortably formulate thoughts, breathe, or pause mid-sentence without being interrupted.
 2. **Dual-Frequency Biometric Speaker Verification:** Authenticates the authorized user across both low frequencies (65 Hz - 180 Hz chest resonance) and high frequencies (180 Hz - 450+ Hz pitch elevation & inflections), ignoring background chatter or imposter voices.
-3. **Continuous Conversational Flow (`--voice`):** Keeps an interactive dialog window open (12s idle timeout) after each response, removing the need to repeat wake words on every follow-up turn.
-4. **Autonomous Multi-Step Task Execution:** Leverages OmniRoute free models (`ddgw/mistral-small-2603`, `auto/best-chat`) to plan and execute complex compound directives with tools:
+3. **100% Offline Speech-to-Text (`core/offline_stt.py`):** Operates with local Vosk Kaldi neural models cached on-device, enabling air-gapped speech recognition without internet access.
+4. **Proactive Butler Autonomy (`core/proactive_agent.py`):**
+   - **Spoken Agenda Reminders:** Proactively warns you 10 minutes prior to appointments (*"Pardon the interruption, sir. You have your meeting in 10 minutes"*), and at start time.
+   - **Protocol Sunrise:** Automated morning wake-up executive briefing delivering daily agenda, weather, and hardware vitals at your designated time (`SUNRISE_TIME=08:00`).
+   - **Hardware Health Sentinel:** Monitors for prolonged critical RAM/CPU load and discreetly suggests optimizations.
+5. **Continuous Conversational Flow (`--voice`):** Keeps an interactive dialog window open (12s idle timeout) after each response, removing the need to repeat wake words on every follow-up turn.
+6. **Autonomous Multi-Step Task Execution:** Leverages OmniRoute free models (`ddgw/mistral-small-2603`, `auto/best-chat`) to plan and execute complex compound directives with tools:
    - Live web search and web scraping (DuckDuckGo zero-cost APIs)
    - Real-time system vitals inspection (CPU, RAM, Disk)
    - Screen inspection & webcam vision

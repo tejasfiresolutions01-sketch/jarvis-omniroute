@@ -137,7 +137,7 @@ class ButlerScheduleManager:
         clean = prompt.lower().strip()
 
         # 1. Daily Morning Briefing
-        if any(p in clean for p in ["daily briefing", "morning briefing", "what does my day look like", "brief me on my day", "itinerary"]):
+        if any(p in clean for p in ["daily briefing", "morning briefing", "what does my day look like", "brief me on my day", "itinerary"]) and not any(k in clean for k in ["set ", "schedule ", "configure "]):
             return True, self.generate_daily_briefing()
 
         # 2. Query Schedule (Today / Tomorrow / Upcoming)

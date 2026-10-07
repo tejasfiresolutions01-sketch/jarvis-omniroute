@@ -117,6 +117,13 @@ def main():
     except Exception:
         pass
 
+    # 7. Start Proactive Butler Agenda & Sunrise Daemon
+    try:
+        from core.proactive_agent import proactive_agent
+        proactive_agent.start()
+    except Exception:
+        pass
+
     parser = argparse.ArgumentParser(description="J.A.R.V.I.S. Artificial Intelligence System")
     parser.add_argument("--cli", action="store_true", help="Launch in Interactive Command Line mode")
     parser.add_argument("--voice", action="store_true", help="Launch in Hands-Free Continuous Voice Conversation mode")

@@ -117,6 +117,12 @@ class LocalIntelligence:
         # ─────────────────────────────────────────────────────────────────────
         # 5. System Hardware Vitals & Executive Briefing (PHASE 2)
         # ─────────────────────────────────────────────────────────────────────
+        sunrise_match = re.search(r"\b(?:set morning briefing for|set sunrise time to|set sunrise to|set morning alarm for)\s*(.+)$", clean_lower)
+        if sunrise_match:
+            from core.proactive_agent import proactive_agent
+            target_time = sunrise_match.group(1).strip()
+            return True, proactive_agent.set_sunrise_time(target_time)
+
         if any(p in clean_lower for p in ["morning briefing", "protocol sunrise", "executive briefing", "status overview"]):
             from tools.briefing_tools import generate_executive_briefing
             res = generate_executive_briefing()

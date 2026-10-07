@@ -107,18 +107,35 @@ class VoiceListener:
         return None
 
     def speech_to_text(self, pcm_bytes: bytes) -> str:
-        """Converts raw PCM audio to text using speech recognition."""
+        """
+        Converts raw PCM audio to text using online recognizer with instant 100% offline fallback.
+        """
         if not pcm_bytes:
             return ""
-        try:
-            audio_data = sr.AudioData(pcm_bytes, self.sample_rate, 2)
-            text = self._recognizer.recognize_google(audio_data)
-            return text.strip()
-        except sr.UnknownValueError:
-            return ""
-        except Exception as e:
-            print(f"[STT Exception]: {e}")
-            return ""
+
+        # 1. Try online Google STT if not forced offline
+        if not getattr(config, "FORCE_OFFLINE_STT", False):
+            try:
+                audio_data = sr.AudioData(pcm_bytes, self.sample_rate, 2)
+                text = self._recognizer.recognize_google(audio_data)
+                if text and text.strip():
+                    return text.strip()
+            except Exception:
+                # Network unreachable or quota reached -> seamless fallback
+                pass
+
+        # 2. Air-Gapped 100% Offline STT (Vosk Engine)
+        from core.offline_stt import offline_stt
+        if offline_stt.is_available:
+            try:
+                offline_text = offline_stt.transcribe(pcm_bytes, self.sample_rate)
+                if offline_text:
+                    print(f"[Offline STT Perception]: {offline_text}")
+                    return offline_text
+            except Exception as e:
+                print(f"[Offline STT Anomaly]: {e}")
+
+        return ""
 
     def capture_and_authenticate(self, timeout: float = 8.0, prompt: str = "") -> Tuple[str, bool]:
         """

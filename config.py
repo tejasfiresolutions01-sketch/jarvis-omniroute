@@ -25,6 +25,11 @@ VOICE_PHRASE_TIME_LIMIT = float(os.getenv("VOICE_PHRASE_TIME_LIMIT", "35.0"))
 VOICE_CONVERSATION_IDLE_TIMEOUT = float(os.getenv("VOICE_CONVERSATION_IDLE_TIMEOUT", "12.0"))
 VOICE_VERIFICATION_ENABLED = os.getenv("VOICE_VERIFICATION_ENABLED", "true").lower() in ("true", "1", "yes")
 VOICE_PROFILE_TOLERANCE = float(os.getenv("VOICE_PROFILE_TOLERANCE", "0.65"))
+FORCE_OFFLINE_STT = os.getenv("FORCE_OFFLINE_STT", "false").lower() in ("true", "1", "yes")
+
+# Proactive Butler & Protocol Sunrise Settings
+SUNRISE_ENABLED = os.getenv("SUNRISE_ENABLED", "true").lower() in ("true", "1", "yes")
+SUNRISE_TIME = os.getenv("SUNRISE_TIME", "08:00")
 
 # Network & Port Settings
 WEB_PORTAL_PORT = int(os.getenv("WEB_PORTAL_PORT", "5050"))
