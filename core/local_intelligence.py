@@ -184,7 +184,17 @@ class LocalIntelligence:
             res = business_scanner.scan_for_new_business(force=True)
             return True, res["message"]
 
-        # Self-Upgrade and Automation (Every 3rd Night or Manual Directive)
+        # Self-Upgrade Status Inquiry
+        if any(p in clean_lower for p in [
+            "are there any upgrades", "are there upgrades", "is there any upgrade",
+            "is there an upgrade", "any upgrades", "check for upgrades", "check upgrades",
+            "upgrade status", "any system upgrades", "what upgrades do we have",
+            "are we up to date", "is jarvis up to date", "system upgrade status"
+        ]):
+            from core.self_evolver import self_evolver
+            return True, self_evolver.get_upgrade_status_summary()
+
+        # Self-Upgrade and Automation Directive (Every 3rd Night or Manual Directive)
         if any(p in clean_lower for p in [
             "upgrade yourself", "run self upgrade", "upgrade and automate",
             "upgrade and automate yourself", "self evolution", "run self-upgrade"

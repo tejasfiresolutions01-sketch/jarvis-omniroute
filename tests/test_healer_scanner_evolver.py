@@ -163,6 +163,12 @@ class TestLocalIntelligenceNewIntents(unittest.TestCase):
         self.assertTrue(handled)
         self.assertIn("self-upgrade", resp)
 
+    def test_upgrade_status_inquiry_intent(self):
+        """Verifies 'are there any upgrades' returns articulate upgrade status."""
+        handled, resp = local_intelligence.evaluate_and_execute("now are there any upgrades")
+        self.assertTrue(handled)
+        self.assertTrue(any(w in resp.lower() for w in ["upgrade", "systems", "operational", "october"]))
+
 
 if __name__ == "__main__":
     unittest.main()
