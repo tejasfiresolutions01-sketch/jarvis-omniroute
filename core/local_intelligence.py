@@ -239,6 +239,26 @@ class LocalIntelligence:
             res = business_scanner.scan_for_new_business(force=True)
             return True, res["message"]
 
+        # Live B2B Lead Harvesting & Domain Deliverability Verification
+        lead_harvest_match = re.match(r"^(?:harvest\s+(?:b2b\s+)?leads(?:\s+in\s+|\s+for\s+)?|scan\s+(?:b2b\s+)?leads(?:\s+in\s+|\s+for\s+)?)(.*)$", clean_lower)
+        if lead_harvest_match or any(p in clean_lower for p in ["harvest leads", "harvest b2b leads", "b2b lead harvester"]):
+            from tools.lead_harvester import lead_harvester
+            corridor = lead_harvest_match.group(1).strip() if lead_harvest_match and lead_harvest_match.group(1) else "ambattur"
+            if not corridor:
+                corridor = "ambattur"
+            res = lead_harvester.run_harvest_and_export(corridor)
+            return True, lead_harvester.format_voice_summary(res)
+
+        # DNS MX Record & Domain Deliverability Verification
+        mx_match = re.match(r"^(?:verify\s+(?:lead\s+)?domain|validate\s+(?:dns\s+)?mx\s+record(?:s)?|check\s+email\s+deliverability\s+for)\s+(.+)$", clean_lower)
+        if mx_match:
+            from tools.lead_harvester import lead_harvester
+            dom = mx_match.group(1).strip()
+            has_mx, hosts, msg = lead_harvester.verify_dns_mx_record(dom)
+            if has_mx:
+                return True, f"Domain {dom} is validated for email delivery, sir. Active MX hosts identified: {', '.join(hosts[:2])}."
+            return True, f"Deliverability check for domain {dom}: {msg}"
+
         # Self-Upgrade Status Inquiry
         if any(p in clean_lower for p in [
             "are there any upgrades", "are there upgrades", "is there any upgrade",
@@ -257,6 +277,25 @@ class LocalIntelligence:
             from core.self_evolver import self_evolver
             res = self_evolver.run_self_upgrade_and_automation(force=True)
             return True, res["message"]
+
+        # Active IDE Co-Pilot & Visual Screen Diagnostics
+        if any(p in clean_lower for p in [
+            "check my code", "check code for errors", "diagnose active window",
+            "diagnose screen", "diagnose screen for errors", "check screen for errors",
+            "ide copilot", "ide co-pilot", "inspect active window", "code copilot"
+        ]):
+            from core.vision_copilot import vision_copilot
+            diag_res = vision_copilot.diagnose_current_screen()
+            return True, diag_res
+
+        # Canary Sandbox & Latency Immune System Status
+        if any(p in clean_lower for p in [
+            "latency immune system", "latency immune status", "canary status",
+            "canary sandbox", "latency telemetry", "benchmark system latency",
+            "system latency status", "immune system status"
+        ]):
+            from core.canary_sandbox import canary_sandbox
+            return True, canary_sandbox.format_immune_status_summary()
 
         # ─────────────────────────────────────────────────────────────────────
         # 2. Application, Folder & Script Launching

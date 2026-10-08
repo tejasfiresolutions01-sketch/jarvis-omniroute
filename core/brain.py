@@ -133,6 +133,14 @@ class JarvisBrain:
             )
             return enforce_single_question(local_res)
 
+        # 10c. Zero-Latency Mathematical & Edge Deduction (Local SLM)
+        from core.local_neural_slm import local_neural_slm
+        math_res = local_neural_slm.solve_math_expression(clean_prompt)
+        if math_res:
+            memory.log_interaction("JARVIS (Local SLM Math)", math_res)
+            vector_memory.index_interaction(clean_prompt, math_res)
+            return enforce_single_question(math_res)
+
         # 11. Opportunistic Online Cognitive Reasoning
         from core.internet_sentinel import internet_sentinel
         # Connect with internet whenever possible
@@ -166,6 +174,14 @@ class JarvisBrain:
                 memory.log_interaction("JARVIS (Conceptual Core)", concept_res)
                 vector_memory.index_interaction(clean_prompt, concept_res)
                 return enforce_single_question(concept_res)
+
+        # 11c. Zero-Cost Embedded Local SLM & Offline Edge Reasoning
+        from core.local_neural_slm import local_neural_slm
+        slm_res = local_neural_slm.reason(clean_prompt, context=full_context)
+        if slm_res:
+            memory.log_interaction("JARVIS (Local Neural SLM)", slm_res)
+            vector_memory.index_interaction(clean_prompt, slm_res)
+            return enforce_single_question(slm_res)
 
         # 12. Check if prompt can be fulfilled by local butler intelligence
         handled, local_res = local_intelligence.evaluate_and_execute(clean_prompt)

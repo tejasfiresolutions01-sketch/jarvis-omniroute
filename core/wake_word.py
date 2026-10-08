@@ -169,6 +169,24 @@ class WakeWordEngine:
                         continue
 
                     chunk_bytes = bytes(data)
+
+                    # Full-Duplex Continuous Dialogue: check active conversational lease
+                    try:
+                        from core.listener import listener
+                        from core.voice_biometrics import voice_biometrics
+                        if listener.has_active_conversation_lease():
+                            samples = np.frombuffer(chunk_bytes, dtype=np.int16).astype(np.float32)
+                            if len(samples) > 0:
+                                rms = float(np.sqrt(np.mean(samples ** 2)))
+                                if rms >= self.energy_threshold and voice_biometrics.is_owner_speaking(chunk_bytes, self.SAMPLE_RATE):
+                                    print("\n[WakeWord Engine]: Active conversational lease follow-up triggered.")
+                                    self.pause()
+                                    if self.callback:
+                                        threading.Thread(target=self.callback, args=("followup",), daemon=True).start()
+                                    continue
+                    except Exception:
+                        pass
+
                     detected = self.check_audio_chunk(chunk_bytes)
                     if detected:
                         print(f"\n[WakeWord Engine]: Wake phrase spotted: '{detected}'")

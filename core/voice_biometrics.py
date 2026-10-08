@@ -240,5 +240,13 @@ class VoiceBiometrics:
         else:
             return False, confidence, f"Voice profile mismatch ({confidence*100:.1f}% confidence below threshold {self.tolerance*100:.1f}%)."
 
+    def is_owner_speaking(self, pcm_bytes: bytes, sample_rate: int = 16000) -> bool:
+        """
+        Ultra-rapid biometric diarization filter for full-duplex conversational listening.
+        Returns True if the incoming audio frame matches the authorized owner's vocal signature.
+        """
+        is_auth, conf, _ = self.verify_speaker(pcm_bytes, sample_rate)
+        return is_auth and conf >= 0.35
+
 # Global singleton
 voice_biometrics = VoiceBiometrics()

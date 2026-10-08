@@ -162,6 +162,20 @@ class SelfEvolver:
         except Exception as e:
             actions_taken.append(f"Software Engineering AI Audit: {e}")
 
+        # ── 4b. Canary Sandboxing & Latency Immune System Benchmark ──
+        try:
+            from core.canary_sandbox import canary_sandbox
+            canary_audit = canary_sandbox.execute_canary_audit()
+            actions_taken.append(
+                f"Canary Sandboxing: Benchmark {canary_audit['status']} "
+                f"(Latency: {canary_audit['avg_latency_ms']}ms <= {canary_audit['latency_threshold_ms']}ms, "
+                f"Memory Delta: {canary_audit['memory_delta_mb']}MB)."
+            )
+            if not canary_audit["passed"]:
+                unrectified_issues.append("Canary Sandbox breach: Dispatch latency or heap growth exceeded safety limits.")
+        except Exception as e:
+            actions_taken.append(f"Canary Sandboxing Audit: {e}")
+
         # ── 5. Mandatory Testing & Debugging Process (At least 3 consecutive passes before deployment) ──
         test_result = self.run_testing_and_debugging_cycles(required_consecutive_passes=3)
         actions_taken.append(

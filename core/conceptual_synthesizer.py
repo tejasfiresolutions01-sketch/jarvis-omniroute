@@ -55,6 +55,12 @@ class ConceptualSynthesizer:
         if any(q.startswith(w) for w in excluded_verbs):
             return False
 
+        # Exclude mathematical arithmetic & calculation queries
+        if re.search(r"\b\d+\s*(?:times|multiplied\s+by|divided\s+by|plus|minus|\+|\-|\*|\/|\^)\s*\d+\b", q):
+            return False
+        if re.search(r"\b(?:square\s+root\s+of|sqrt)\s+\d+", q):
+            return False
+
         for pattern in self.CONCEPT_TRIGGERS:
             if re.search(pattern, q):
                 return True

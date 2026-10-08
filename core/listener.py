@@ -37,12 +37,24 @@ class VoiceListener:
         # Ultra-rapid end-of-speech detection (0.7s silence threshold for sub-second voice turnaround)
         self.pause_threshold = float(getattr(config, "VOICE_PAUSE_THRESHOLD", 0.7))
         self.phrase_time_limit = float(getattr(config, "VOICE_PHRASE_TIME_LIMIT", 35.0))
-        self.conversational_idle_timeout = float(getattr(config, "VOICE_CONVERSATION_IDLE_TIMEOUT", 12.0))
-
+        self.conversational_idle_timeout = float(getattr(config, "VOICE_CONVERSATIONAL_IDLE_TIMEOUT", 8.0))
         self.is_monitoring = False
         self.in_conversation_mode = False
+        self._conversation_lease_until = 0.0
         self._thread: Optional[threading.Thread] = None
         self._recognizer = sr.Recognizer()
+
+    def has_active_conversation_lease(self) -> bool:
+        """Returns True if full-duplex conversational follow-up window is currently active."""
+        return time.time() < self._conversation_lease_until
+
+    def renew_conversation_lease(self, duration: float = 25.0):
+        """Extends the hands-free continuous dialogue window."""
+        self._conversation_lease_until = time.time() + duration
+
+    def close_conversation_lease(self):
+        """Immediately closes the continuous dialogue window."""
+        self._conversation_lease_until = 0.0
 
     def record_audio_utterance(self, timeout: float = 8.0, prompt_text: str = "") -> Optional[bytes]:
         """
@@ -169,6 +181,11 @@ class VoiceListener:
             if voice.is_recently_spoken(text):
                 print(f"[Acoustic Sentinel]: Echo suppression discarded self-reflection: '{text}'")
                 return "", False
+
+            if any(w in text.lower() for w in self.EXIT_CONVERSATION_WORDS):
+                self.close_conversation_lease()
+            else:
+                self.renew_conversation_lease(25.0)
 
             play_ack_chime()
             print(f"[Captured Voice]: {text}")
@@ -307,6 +324,15 @@ class VoiceListener:
                     # Barge-in stop check
                     if any(s in phrase for s in self.STOP_WORDS):
                         stop_speaking()
+                        continue
+
+                    # Full-Duplex Continuous Conversation Lease: bypass wake word if active
+                    if self.has_active_conversation_lease():
+                        if any(w in phrase for w in self.EXIT_CONVERSATION_WORDS):
+                            self.close_conversation_lease()
+                            continue
+                        self.renew_conversation_lease(25.0)
+                        callback(phrase)
                         continue
 
                     # Wake word trigger

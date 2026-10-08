@@ -113,6 +113,20 @@ class BusinessScanner:
             f"with official hydro-test test certificates provided upon completion.\n"
         )
 
+        # Enrich dossier with live harvested B2B leads (Zero-Cost DNS MX Verified)
+        try:
+            from tools.lead_harvester import lead_harvester
+            live_leads = lead_harvester.harvest_leads_for_corridor("ambattur")
+            if live_leads:
+                dossier_content += "\n---\n\n## 5. Verified B2B Lead Pipeline (Zero-Cost DNS MX Verified)\n\n"
+                dossier_content += "| Company | Hub | Lead Score | Deliverability | Extinguisher Requirement |\n"
+                dossier_content += "|---|---|---|---|---|\n"
+                for l in live_leads[:5]:
+                    mx_str = "Verified MX" if l.get("has_verified_mx") else "Standard Host"
+                    dossier_content += f"| {l['company_name']} | {l['hub']} | {l['lead_score']}/100 | {mx_str} | {l['extinguisher_needs']} |\n"
+        except Exception:
+            pass
+
         # Enforce English-only verification
         if not verify_campaign_english_only(dossier_content):
             raise ValueError("Business scan content violates English-only policy.")
