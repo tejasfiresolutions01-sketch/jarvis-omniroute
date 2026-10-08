@@ -438,6 +438,27 @@ class LocalIntelligence:
             hud_controller.cycle_palette()
             return True, "Cycling holographic visual palette on the tactical display, sir."
 
+        # Single Notification Rule: Inquiries & Repeats ("notify only once unless asked again")
+        if any(p in clean_lower for p in [
+            "what was that notification", "repeat notification", "repeat last notification",
+            "what did you say", "tell me again", "repeat reminder", "what is that reminder", "repeat that reminder"
+        ]):
+            from core.notification_guard import notification_guard
+            repeated = notification_guard.request_repeat()
+            if repeated:
+                return True, f"Repeating your notification, sir: {repeated}"
+            else:
+                return True, "There are no prior notifications on record to repeat, sir."
+
+        if any(p in clean_lower for p in ["read notifications", "any notifications", "show notifications", "notification status", "check notifications"]):
+            from core.notification_guard import notification_guard
+            recent = notification_guard.get_recent_notifications(limit=3)
+            if recent:
+                items = [f"Notification {i+1}: {item['message']}" for i, item in enumerate(recent)]
+                return True, f"Here are your recent notifications, sir. {' '.join(items)}"
+            else:
+                return True, "All notification queues are clear with zero pending alerts, sir."
+
         # Digital Marketing Suite - Master Campaign & Specialized Sub-Engines
         mkt_match = re.match(r"^(?:run|launch|generate|execute)\s+(?:a\s+)?digital\s+marketing(?:\s+campaign)?(?:\s+for|\s+in)?(.*)$", clean_lower)
         if mkt_match or any(p in clean_lower for p in ["run digital marketing", "launch digital marketing", "digital marketing campaign", "marketing suite"]):

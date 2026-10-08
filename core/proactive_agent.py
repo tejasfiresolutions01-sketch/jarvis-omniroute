@@ -100,7 +100,7 @@ class ProactiveButlerAgent:
                         f"Pardon the interruption, sir. You have '{ev_title}' "
                         f"scheduled in ten minutes at {formatted_time}."
                     )
-                    self._deliver_proactive_alert(msg)
+                    self._deliver_proactive_alert(msg, alert_id=f"schedule:{ev_id}:10min")
 
                 # 2. On-time start alert (0.0 to 1.5 mins)
                 now_key = f"{ev_id}:now"
@@ -108,7 +108,7 @@ class ProactiveButlerAgent:
                     self._notified_events.add(now_key)
                     formatted_time = ev_time.strftime("%I:%M %p")
                     msg = f"Sir, it is {formatted_time}. It is time for '{ev_title}'."
-                    self._deliver_proactive_alert(msg)
+                    self._deliver_proactive_alert(msg, alert_id=f"schedule:{ev_id}:now")
 
             except Exception:
                 continue
@@ -134,6 +134,8 @@ class ProactiveButlerAgent:
                 f"Good morning, sir. Protocol Sunrise initiated. "
                 f"{briefing} All subroutines stand ready for your command."
             )
+            from core.notification_guard import notification_guard
+            notification_guard.notify_once(f"sunrise:{today_str}", announcement, category="sunrise", allow_unprompted=True)
             speak(announcement)
 
     def check_hardware_health(self):
@@ -160,14 +162,25 @@ class ProactiveButlerAgent:
                         f"RAM load is at {ram_val:.1f}% and CPU utilization is at {cpu_val:.1f}%. "
                         f"Would you like me to inspect active tasks?"
                     )
-                    self._deliver_proactive_alert(alert)
+                    self._deliver_proactive_alert(alert, alert_id=f"hardware_strain:{int(now_ts // 1800)}")
             else:
                 self._high_load_counter = 0
         except Exception:
             pass
 
-    def _deliver_proactive_alert(self, message: str):
-        """Discreetly plays an acoustic chime and vocalizes proactive message."""
+    def _deliver_proactive_alert(self, message: str, alert_id: Optional[str] = None):
+        """Discreetly plays an acoustic chime and vocalizes proactive message strictly once."""
+        from core.notification_guard import notification_guard
+        key = alert_id or f"proactive:{hash(message)}"
+        if not notification_guard.can_notify(key):
+            return
+        notification_guard.notify_once(
+            notification_id=key,
+            message=message,
+            category="proactive_reminder",
+            allow_unprompted=True
+        )
+
         def _worker():
             # Wait if currently speaking
             while is_speaking:

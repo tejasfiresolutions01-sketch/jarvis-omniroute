@@ -44,8 +44,14 @@ class NotificationSentinel:
         As instructed by user: completed tasks are announced via voice.
         """
         try:
-            from core.voice import speak
-            speak(f"Sir, I have completed task number {task_id}: {task_title}.")
+            from core.notification_guard import notification_guard
+            voice_msg = f"Sir, I have completed task number {task_id}: {task_title}."
+            notification_guard.notify_once(
+                notification_id=f"task_completed:{task_id}",
+                message=voice_msg,
+                category="task_completed",
+                is_user_command=True
+            )
         except Exception:
             pass
 

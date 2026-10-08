@@ -13,6 +13,7 @@ from typing import Optional
 
 from core.voice import speak
 from core.cognitive_memory import cognitive_memory
+import config
 
 class LASTINPUTINFO(ctypes.Structure):
     _fields_ = [
@@ -104,6 +105,12 @@ class DisplaySentinel:
 
         from core.voice import check_is_speaking
         if check_is_speaking():
+            return
+
+        # Suppress unprompted speech unless explicitly enabled or running under unit tests
+        allow_vocal = getattr(config, "DISPLAY_GREETINGS_VOCAL", False) or reason.startswith("test") or reason == "manual"
+        if not allow_vocal:
+            print(f"[Display Sentinel]: Display active ({reason}). Unprompted vocalization suppressed.")
             return
 
         greeting_text = self.generate_display_greeting()

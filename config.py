@@ -27,9 +27,12 @@ VOICE_VERIFICATION_ENABLED = os.getenv("VOICE_VERIFICATION_ENABLED", "true").low
 VOICE_PROFILE_TOLERANCE = float(os.getenv("VOICE_PROFILE_TOLERANCE", "0.35")) # Permissive adaptive tolerance
 FORCE_OFFLINE_STT = os.getenv("FORCE_OFFLINE_STT", "false").lower() in ("true", "1", "yes")
 
-# Proactive Butler & Protocol Sunrise Settings
+# Proactive Butler, Notification & Protocol Sunrise Settings
 SUNRISE_ENABLED = os.getenv("SUNRISE_ENABLED", "true").lower() in ("true", "1", "yes")
 SUNRISE_TIME = os.getenv("SUNRISE_TIME", "08:00")
+UNPROMPTED_NOTIFICATIONS_ENABLED = os.getenv("UNPROMPTED_NOTIFICATIONS_ENABLED", "false").lower() in ("true", "1", "yes")
+DISPLAY_GREETINGS_VOCAL = os.getenv("DISPLAY_GREETINGS_VOCAL", "false").lower() in ("true", "1", "yes")
+NOTIFY_ONLY_ONCE = True
 
 # Network & Port Settings
 WEB_PORTAL_PORT = int(os.getenv("WEB_PORTAL_PORT", "5050"))

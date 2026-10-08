@@ -433,41 +433,24 @@ class VoiceListener:
             except Exception:
                 pass
 
-            first_turn = True
-            while self.is_monitoring and not self.in_conversation_mode:
-                prompt_text = "Directive, sir: " if first_turn else "Follow-up directive, sir: "
-                turn_timeout = 8.0 if first_turn else 5.5
-                text, is_auth = self.capture_and_authenticate(
-                    timeout=turn_timeout,
-                    prompt=prompt_text,
-                    play_chime=first_turn
-                )
-                first_turn = False
+            # Single-Turn Wake Execution: Capture exactly ONE directive per wake word.
+            # Never loop or nag for unprompted 'Follow-up directive, sir:' unless user
+            # explicitly engaged continuous conversation mode.
+            text, is_auth = self.capture_and_authenticate(
+                timeout=7.5,
+                prompt="Directive, sir: ",
+                play_chime=True
+            )
 
-                if not text or not is_auth:
-                    self.close_conversation_lease()
-                    break
-
+            if text and is_auth:
                 if any(w in text.lower() for w in self.EXIT_CONVERSATION_WORDS):
-                    self.close_conversation_lease()
                     from core.voice import speak
                     speak("Standing by, sir.")
-                    break
+                else:
+                    cb = getattr(self, "_callback", callback)
+                    cb(text)
 
-                cb = getattr(self, "_callback", callback)
-                keep_running = cb(text)
-                if keep_running is False:
-                    self.close_conversation_lease()
-                    break
-
-                # Wait for response vocalization to complete before opening microphone for next turn
-                import core.voice as voice
-                while voice.check_is_speaking():
-                    time.sleep(0.1)
-                time.sleep(0.3)  # Acoustic buffer
-
-                if not self.has_active_conversation_lease():
-                    break
+            self.close_conversation_lease()
 
             try:
                 from core.audio_visualizer import audio_visualizer

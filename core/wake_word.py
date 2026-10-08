@@ -8,6 +8,7 @@ import os
 import json
 import time
 import math
+import re
 import threading
 from typing import Callable, Optional, List
 import numpy as np
@@ -122,14 +123,14 @@ class WakeWordEngine:
                 res = json.loads(self._recognizer.Result())
                 text = res.get("text", "").lower().strip()
                 for kw in self.KEYPHRASES:
-                    if kw in text:
+                    if re.search(r'\b' + re.escape(kw) + r'\b', text):
                         matched_phrase = kw
                         break
             else:
                 part = json.loads(self._recognizer.PartialResult())
                 ptext = part.get("partial", "").lower().strip()
                 for kw in self.KEYPHRASES:
-                    if kw in ptext:
+                    if re.search(r'\b' + re.escape(kw) + r'\b', ptext):
                         matched_phrase = kw
                         break
 

@@ -170,7 +170,17 @@ class TestHUDControllerIPC(unittest.TestCase):
     """Tests the IPC command bridge and status queries."""
 
     def setUp(self):
+        import tempfile
+        self.tmp_dir = tempfile.TemporaryDirectory()
+        self.tmp_ipc = Path(self.tmp_dir.name) / "test_ipc.json"
+        self.tmp_ipc.write_text("[]", encoding="utf-8")
+        self.patcher = patch("tools.hud_controller.IPC_FILE", self.tmp_ipc)
+        self.patcher.start()
         self.controller = HUDController()
+
+    def tearDown(self):
+        self.patcher.stop()
+        self.tmp_dir.cleanup()
 
     def test_send_and_poll_commands(self):
         """Verifies commands queued via send_command are retrieved and cleared by poll_pending_commands."""

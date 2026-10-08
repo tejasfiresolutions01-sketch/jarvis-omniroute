@@ -178,11 +178,12 @@ class OffgridSentinel:
         self.setup_hardware_wake_task()
         self.ensure_cloud_drone_workflow()
 
-        # Check for unbriefed tasks completed while device was away
+        # Check for unbriefed tasks completed while device was away; cache silently without unprompted speech
         debrief = head_commander.generate_offline_debrief()
         if debrief:
-            from core.voice import speak
-            speak(debrief)
+            head_commander.cached_offline_debrief = debrief
+            from core.notification_guard import notification_guard
+            notification_guard.notify_once("offline_debrief", debrief, category="task_debrief", allow_unprompted=False)
 
 # Global singleton
 offgrid_sentinel = OffgridSentinel()
