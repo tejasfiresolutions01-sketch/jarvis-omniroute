@@ -152,7 +152,7 @@ class PortalHandler(http.server.BaseHTTPRequestHandler):
                 # Robust key extraction: prompt, command, text, query
                 prompt = data.get("prompt") or data.get("command") or data.get("text") or data.get("query") or ""
                 response_text = brain.think(prompt)
-                speak(response_text)
+                threading.Thread(target=speak, args=(response_text,), daemon=True).start()
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
                 self.end_headers()
