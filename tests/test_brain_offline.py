@@ -34,5 +34,28 @@ class TestBrainOffline(unittest.TestCase):
         res = brain.think("Can you tell me about yourself? And how do you work?")
         self.assertLessEqual(res.count("?"), 1)
 
+    def test_device_lock_and_unlock_via_brain(self):
+        from core.security_sentinels import device_lock_sentinel
+        try:
+            # 1. Lock device directive
+            res_lock = brain.think("lock my device")
+            self.assertIn("locked securely", res_lock.lower())
+            self.assertTrue(device_lock_sentinel.is_locked)
+
+            # 2. Command while locked is rejected
+            res_blocked = brain.think("what time is it")
+            self.assertIn("workstation is locked", res_blocked.lower())
+
+            # 3. Unlock directive succeeds
+            res_unlock = brain.think("hey Jarvis, unlock my device")
+            self.assertIn("authentication verified", res_unlock.lower())
+            self.assertFalse(device_lock_sentinel.is_locked)
+
+            # 4. Direct unlock command also succeeds
+            res_unlock_direct = brain.think("unlock device")
+            self.assertIn("authentication verified", res_unlock_direct.lower())
+        finally:
+            device_lock_sentinel.is_locked = False
+
 if __name__ == "__main__":
     unittest.main()

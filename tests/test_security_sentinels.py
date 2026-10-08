@@ -51,6 +51,65 @@ class TestSecuritySentinels(unittest.TestCase):
         self.assertTrue(auth)
         self.assertFalse(device_lock_sentinel.is_locked)
 
+    def test_unlock_directive_variations(self):
+        variations = [
+            "unlock my device",
+            "unlock device",
+            "unlock the device",
+            "unlock this device",
+            "unlock screen",
+            "unlock workstation",
+            "unlock computer",
+            "unlock pc",
+            "unlock system",
+            "hey jarvis, unlock my device",
+            "hey jarvis unlock screen",
+            "please unlock workstation",
+            "also make jarvis unlock my device"
+        ]
+        for phrase in variations:
+            device_lock_sentinel.is_locked = True
+            is_eval, auth, msg = device_lock_sentinel.evaluate_unlock_directive(phrase)
+            self.assertTrue(is_eval, f"Failed evaluation for: {phrase}")
+            self.assertTrue(auth, f"Failed authorization for: {phrase}")
+            self.assertFalse(device_lock_sentinel.is_locked)
+            self.assertIn("Authentication verified", msg)
+
+    def test_negative_unlock_rejection(self):
+        negatives = [
+            "don't unlock my device",
+            "do not unlock screen",
+            "never unlock workstation",
+            "cancel unlock my device"
+        ]
+        for neg in negatives:
+            device_lock_sentinel.is_locked = True
+            is_eval, auth, msg = device_lock_sentinel.evaluate_unlock_directive(neg)
+            # Should not be authorized as an unlock action
+            self.assertFalse(auth, f"Should reject negative command: {neg}")
+
+    def test_hardware_unlock_routine(self):
+        from unittest.mock import patch, MagicMock
+        import config
+
+        # Test with PIN
+        with patch.object(config, "DEVICE_UNLOCK_PIN", "4321"):
+            with patch("ctypes.windll") as mock_windll:
+                msg = device_lock_sentinel.unlock_device(simulate_hardware=True)
+                self.assertFalse(device_lock_sentinel.is_locked)
+                self.assertIn("credentials submitted", msg)
+                self.assertTrue(mock_windll.kernel32.SetThreadExecutionState.called)
+                self.assertTrue(mock_windll.user32.SendMessageW.called)
+                self.assertTrue(mock_windll.user32.keybd_event.called)
+
+        # Test without PIN
+        with patch.object(config, "DEVICE_UNLOCK_PIN", ""):
+            with patch("ctypes.windll") as mock_windll:
+                msg = device_lock_sentinel.unlock_device(simulate_hardware=True)
+                self.assertFalse(device_lock_sentinel.is_locked)
+                self.assertIn("Device display awakened", msg)
+
+
     def test_shutdown_keyword(self):
         # Meta instructions do not shut down
         is_shut, _ = device_power_sentinel.evaluate_shutdown_directive("change shutdown keyword to lets sleep jarvis")

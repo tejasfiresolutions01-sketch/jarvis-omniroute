@@ -1,7 +1,10 @@
 import os
 import re
+import sys
+import time
 import secrets
 from typing import Tuple, Optional, Dict, Any
+import config
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 1. Financial Gatekeeper
@@ -140,9 +143,9 @@ class CredentialGuardian:
 # ─────────────────────────────────────────────────────────────────────────────
 class DeviceLockSentinel:
     """
-    Device Lock Sentinel.
-    Allows unlocking ONLY when the user explicitly speaks:
-    "hey Jarvis, unlock my device"
+    Device Lock & Unlock Sentinel.
+    Protects workstation security and facilitates voice/command-driven device unlocking.
+    Executes physical Windows display wake, lock screen dismissal, and optional credential entry.
     """
 
     def __init__(self):
@@ -157,16 +160,102 @@ class DeviceLockSentinel:
             pass
         return "Workstation locked securely, sir. I will stand guard until you state: 'hey Jarvis, unlock my device'."
 
+    def unlock_device(self, simulate_hardware: Optional[bool] = None) -> str:
+        """
+        Executes physical Windows display wake and session unlock routine:
+        1. Resets internal sentinel state (is_locked = False).
+        2. Awakens monitor via SetThreadExecutionState & monitor power broadcast.
+        3. Simulates gentle input (mouse move + Space keystroke) to dismiss lock screen curtain.
+        4. If DEVICE_UNLOCK_PIN is configured, inputs credentials and presses Enter.
+        """
+        self.is_locked = False
+        pin_entered = False
+
+        if simulate_hardware is None:
+            # Safe default: execute hardware simulation in runtime, bypass in automated unit tests
+            is_test_env = "unittest" in sys.modules or os.getenv("TESTING") == "1"
+            simulate_hardware = not is_test_env
+
+        if simulate_hardware:
+            try:
+                import ctypes
+                user32 = ctypes.windll.user32
+                kernel32 = ctypes.windll.kernel32
+
+                # 1. Attach to Default interactive desktop if possible
+                try:
+                    hdesk = user32.OpenDesktopW("Default", 0, False, 0x01FF)
+                    if hdesk:
+                        user32.SetThreadDesktop(hdesk)
+                except Exception:
+                    pass
+
+                # 2. Prevent sleep & wake display
+                # ES_CONTINUOUS (0x80000000) | ES_DISPLAY_REQUIRED (0x00000002) | ES_SYSTEM_REQUIRED (0x00000001)
+                kernel32.SetThreadExecutionState(0x80000003)
+
+                # 3. Broadcast monitor power ON (WM_SYSCOMMAND, SC_MONITORPOWER, -1)
+                HWND_BROADCAST = 0xFFFF
+                WM_SYSCOMMAND = 0x0112
+                SC_MONITORPOWER = 0xF170
+                user32.SendMessageW(HWND_BROADCAST, WM_SYSCOMMAND, SC_MONITORPOWER, -1)
+
+                # 4. Gentle mouse movement to dismiss screensaver
+                user32.mouse_event(0x0001, 1, 1, 0, 0)
+                time.sleep(0.05)
+                user32.mouse_event(0x0001, -1, -1, 0, 0)
+
+                # 5. Dismiss Windows lock screen curtain (press SPACE)
+                VK_SPACE = 0x20
+                KEYEVENTF_KEYUP = 0x0002
+                user32.keybd_event(VK_SPACE, 0, 0, 0)
+                time.sleep(0.05)
+                user32.keybd_event(VK_SPACE, 0, KEYEVENTF_KEYUP, 0)
+
+                # 6. If DEVICE_UNLOCK_PIN configured, enter credentials
+                pin = getattr(config, "DEVICE_UNLOCK_PIN", "") or os.getenv("DEVICE_UNLOCK_PIN", "")
+                if pin:
+                    time.sleep(0.4)  # Wait for password/PIN prompt transition
+                    for ch in str(pin):
+                        if ch.isdigit() or ch.isalpha():
+                            vk = ord(ch.upper())
+                            user32.keybd_event(vk, 0, 0, 0)
+                            time.sleep(0.02)
+                            user32.keybd_event(vk, 0, KEYEVENTF_KEYUP, 0)
+                            time.sleep(0.02)
+
+                    # Submit with Enter
+                    VK_RETURN = 0x0D
+                    user32.keybd_event(VK_RETURN, 0, 0, 0)
+                    time.sleep(0.02)
+                    user32.keybd_event(VK_RETURN, 0, KEYEVENTF_KEYUP, 0)
+                    pin_entered = True
+
+            except Exception:
+                pass
+
+        if pin_entered:
+            return "Authentication verified, sir. Screen awakened, credentials submitted, and workstation unlocked."
+        return "Authentication verified, sir. Device display awakened and full administrative authority restored."
+
     def evaluate_unlock_directive(self, prompt: str) -> Tuple[bool, bool, str]:
         clean = prompt.lower().strip(" \t\n\r\"'.,!?")
         norm = re.sub(r"[^\w\s]", "", clean)
 
-        # Exact match pattern: "hey jarvis unlock my device"
-        is_unlock_phrase = bool(re.search(r"\bhey\s+jarvis\b.*?\bunlock\s+(?:my\s+)?device\b", norm)) or norm == "unlock my device"
+        # Disallow negative intent like "don't unlock my device" or "do not unlock"
+        if any(neg in norm for neg in ["dont unlock", "do not unlock", "never unlock", "cancel unlock"]):
+            return False, False, ""
+
+        # Broad pattern: matches "unlock [my/the/this] [device/workstation/pc/computer/screen/display/system]"
+        # with optional "hey jarvis", "jarvis", "please", etc.
+        is_unlock_phrase = bool(re.search(
+            r"\bunlock\s+(?:(?:my|the|this)\s+)?(?:device|workstation|pc|computer|screen|display|system)\b",
+            norm
+        ))
 
         if is_unlock_phrase:
-            self.is_locked = False
-            return True, True, "Authentication verified, sir. Device unlocked and full administrative authority restored."
+            msg = self.unlock_device()
+            return True, True, msg
 
         if self.is_locked:
             return True, False, "Workstation is locked, sir. State 'hey Jarvis, unlock my device' to restore access."

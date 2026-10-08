@@ -63,6 +63,9 @@ IRONMAN_ICO_PATH = ASSETS_DIR / "ironman.ico"
 AWAY_MODE_ENABLED = os.getenv("AWAY_MODE_ENABLED", "true").lower() in ("true", "1", "yes")
 OFFGRID_SYNC_ENABLED = os.getenv("OFFGRID_SYNC_ENABLED", "true").lower() in ("true", "1", "yes")
 
+# Security Sentinel & Device Access Settings
+DEVICE_UNLOCK_PIN = os.getenv("DEVICE_UNLOCK_PIN", "")
+
 # Ensure runtime directories exist
 MEMORY_DIR.mkdir(parents=True, exist_ok=True)
 ASSETS_DIR.mkdir(parents=True, exist_ok=True)

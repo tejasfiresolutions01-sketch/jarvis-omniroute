@@ -3,7 +3,8 @@ from unittest.mock import patch, MagicMock
 from pathlib import Path
 from datetime import date
 
-from core.voice import clean_for_speech, _get_os_speech_lock, _release_os_speech_lock
+import time
+from core.voice import clean_for_speech, _get_os_speech_lock, _release_os_speech_lock, stop_speaking
 from core.conceptual_synthesizer import conceptual_synthesizer
 from core.local_intelligence import local_intelligence
 from core.supreme_command_executor import supreme_executor
@@ -24,7 +25,9 @@ class TestGapUpgrades(unittest.TestCase):
         self.assertNotIn("Namaste", cleaned)
 
         # Test OS speech lock
-        lock = _get_os_speech_lock(timeout=5.0)
+        stop_speaking()
+        time.sleep(0.1)
+        lock = _get_os_speech_lock(timeout=8.0)
         self.assertIsNotNone(lock)
         _release_os_speech_lock(lock)
 

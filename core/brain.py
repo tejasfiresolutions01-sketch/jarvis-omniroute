@@ -1,4 +1,5 @@
 import os
+import re
 from typing import Optional
 from core.single_question import enforce_single_question
 from core.asimov_guard import asimov_guard
@@ -58,7 +59,11 @@ class JarvisBrain:
             return enforce_single_question(unlock_msg)
 
         # Lock workstation directive
-        if clean_prompt.lower() in ["lock my device", "lock device", "lock this device", "lock workstation", "lock screen", "lock pc"]:
+        clean_lower = clean_prompt.lower()
+        if clean_lower in ["lock my device", "lock device", "lock this device", "lock workstation", "lock screen", "lock pc"] or (
+            bool(re.search(r"\b(?:(?:hey\s+)?jarvis\s*,?\s*)?lock\s+(?:(?:my|the|this)\s+)?(?:device|workstation|pc|computer|screen|display|system)\b", clean_lower))
+            and not bool(re.search(r"\bunlock\b", clean_lower))
+        ):
             lock_msg = device_lock_sentinel.lock_device()
             memory.log_interaction("JARVIS (Lock Sentinel)", lock_msg)
             return enforce_single_question(lock_msg)
