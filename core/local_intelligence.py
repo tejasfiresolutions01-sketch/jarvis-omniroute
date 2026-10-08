@@ -104,6 +104,45 @@ class LocalIntelligence:
                 f"Our specialized AI agents and system tools are actively deployed and running."
             )
 
+        # ── Cancel All Pending Tasks and Upgrade Command Execution ─────────────
+        if any(p in clean_lower for p in [
+            "cancel all the pending tasks and upgrade the command execution to the highest level",
+            "cancel all pending tasks and upgrade the command execution to the highest level",
+            "cancel all the pending tasks and upgrade command execution to highest level",
+            "cancel pending tasks and upgrade command execution to the highest level",
+            "cancel all pending tasks and upgrade command execution",
+            "cancel pending tasks and upgrade execution"
+        ]):
+            from core.supreme_command_executor import supreme_executor
+            return supreme_executor.cancel_and_upgrade()
+
+        # Cancel All Pending Tasks
+        if any(clean_lower == p or clean_lower.startswith(p) for p in [
+            "cancel all the pending tasks", "cancel all pending tasks", "cancel pending tasks",
+            "cancel tasks", "cancel all tasks", "clear all pending tasks", "clear pending tasks",
+            "abort all pending tasks", "abort pending tasks", "stop all pending tasks", "stop pending tasks"
+        ]):
+            from core.supreme_command_executor import supreme_executor
+            res = supreme_executor.cancel_all_pending_tasks()
+            return True, res["message"]
+
+        # Upgrade Command Execution to Highest Level
+        if any(clean_lower == p or clean_lower.startswith(p) for p in [
+            "upgrade the command execution to the highest level",
+            "upgrade command execution to the highest level",
+            "upgrade command execution to highest level",
+            "upgrade command execution",
+            "upgrade execution to highest level",
+            "set command execution to highest level",
+            "highest level command execution",
+            "elevate command execution",
+            "elevate execution priority",
+            "maximum command execution"
+        ]):
+            from core.supreme_command_executor import supreme_executor
+            res = supreme_executor.upgrade_execution_to_highest_level()
+            return True, res["message"]
+
         # Off-Grid / Standby / Away Mode Status
         if any(clean_lower == p for p in ["offgrid status", "away mode status", "device off status", "wake timer status"]):
             away = "active" if offgrid_sentinel.away_mode_active else "standby"

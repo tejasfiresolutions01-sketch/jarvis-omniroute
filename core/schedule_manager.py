@@ -126,6 +126,16 @@ class ButlerScheduleManager:
             conn.commit()
         return f"All agenda entries for {target_date} have been cleared, sir."
 
+    def cancel_all_pending_events(self) -> int:
+        """Cancels all uncompleted calendar events and reminders."""
+        with self._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT COUNT(*) FROM schedule_events WHERE is_completed = 0")
+            count = cur.fetchone()[0]
+            conn.execute("UPDATE schedule_events SET is_completed = 1 WHERE is_completed = 0")
+            conn.commit()
+        return count
+
     # ─────────────────────────────────────────────────────────────────────────
     # Butler Natural Language Parsers
     # ─────────────────────────────────────────────────────────────────────────
@@ -154,7 +164,7 @@ class ButlerScheduleManager:
 
         # 3. Cancel / Remove event
         cancel_match = re.search(r"\b(?:cancel|remove|delete)\s+(?:(?:the\s+)?(?:meeting|appointment|reminder|event|task)\s+)?(?:with|for|called\s+)?(.+)$", clean)
-        if cancel_match and not re.search(r"\b(?:file|folder|window|app|application)\b", clean):
+        if cancel_match and not re.search(r"\b(?:file|folder|window|app|application|pending task|pending tasks|all tasks|all pending tasks|command execution)\b", clean):
             target_title = cancel_match.group(1).strip()
             # Clean filler words
             target_title = re.sub(r"\b(?:from my schedule|today|tomorrow)\b", "", target_title).strip()

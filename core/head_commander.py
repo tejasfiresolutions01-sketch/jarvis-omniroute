@@ -18,6 +18,9 @@ import threading
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
+import logging
+
+logger = logging.getLogger("HeadCommander")
 
 import config
 from core.free_ai_matrix import free_ai_matrix
@@ -195,6 +198,31 @@ class JarvisHeadCommander:
                 """, (status, progress, task_id))
             conn.commit()
         self.sync_to_json()
+
+    def cancel_all_pending_tasks(self) -> int:
+        """
+        Cancels all pending, in_progress, and queued tasks in SQLite and syncs to JSON.
+        Returns the count of cancelled tasks.
+        """
+        with self._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT COUNT(*) FROM pending_tasks
+                WHERE status IN ('pending', 'in_progress', 'scheduled', 'queued')
+            """)
+            count = cur.fetchone()[0]
+
+            now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            cur.execute("""
+                UPDATE pending_tasks
+                SET status = 'cancelled', result_summary = 'Cancelled by direct user order.', completed_at = ?
+                WHERE status IN ('pending', 'in_progress', 'scheduled', 'queued')
+            """, (now_str,))
+            conn.commit()
+
+        self.sync_to_json()
+        logger.info(f"[Head Commander]: Cancelled {count} pending tasks by user directive.")
+        return count
 
     # ─────────────────────────────────────────────────────────────────────────
     # Head Commander Agent & Tool Selection Matrix
