@@ -23,54 +23,257 @@ HTML_PORTAL = """<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>J.A.R.V.I.S. // MOBILE COMMAND PORTAL</title>
+<title>J.A.R.V.I.S. // STARK QUANTUM HOLOGRAPHIC PORTAL</title>
 <style>
   :root {
-    --bg: #030811;
-    --card: #08152b;
-    --cyan: #00e5ff;
-    --gold: #d4af37;
-    --red: #ff3344;
-    --text: #e0f4ff;
-    --dim: #4a6fa5;
+    --bg: #010612;
+    --card: #041126;
+    --card-border: #0b2f5c;
+    --cyan: #00f0ff;
+    --gold: #ffd700;
+    --red: #ff2a55;
+    --text: #e0f6ff;
+    --dim: #3a6899;
+    --glow: rgba(0, 240, 255, 0.35);
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-  body { background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; padding: 16px; }
-  header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 16px; border-bottom: 1px solid rgba(0,229,255,0.2); margin-bottom: 16px; }
-  .title { color: var(--cyan); font-size: 1.2rem; font-weight: bold; letter-spacing: 2px; }
-  .badge { background: rgba(0,229,255,0.1); border: 1px solid var(--cyan); color: var(--cyan); padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; }
-  .console { flex: 1; background: #02050a; border: 1px solid rgba(0,229,255,0.2); border-radius: 8px; padding: 14px; height: 350px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; font-size: 0.9rem; margin-bottom: 16px; }
-  .msg-user { color: #fff; align-self: flex-end; background: rgba(0,229,255,0.15); padding: 8px 12px; border-radius: 8px; max-width: 80%; }
-  .msg-jarvis { color: var(--cyan); align-self: flex-start; background: rgba(8,21,43,0.8); border-left: 3px solid var(--cyan); padding: 8px 12px; border-radius: 8px; max-width: 85%; }
-  .input-bar { display: flex; gap: 8px; margin-bottom: 12px; }
-  input[type="text"] { flex: 1; background: #091933; border: 1px solid var(--dim); color: #fff; padding: 12px 14px; border-radius: 6px; font-size: 1rem; outline: none; }
-  input[type="text"]:focus { border-color: var(--cyan); box-shadow: 0 0 10px rgba(0,229,255,0.3); }
-  button { background: #0c2347; color: var(--cyan); border: 1px solid var(--cyan); padding: 12px 18px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: all 0.2s; }
-  button:hover { background: var(--cyan); color: #000; }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Consolas', 'Segoe UI', monospace; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 14px;
+    background-image: 
+      radial-gradient(circle at 50% 20%, rgba(0, 240, 255, 0.08) 0%, transparent 60%),
+      linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+    background-size: 100% 100%, 32px 32px, 32px 32px;
+  }
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(0,240,255,0.3);
+    margin-bottom: 12px;
+  }
+  .title {
+    color: var(--cyan);
+    font-size: 1.15rem;
+    font-weight: bold;
+    letter-spacing: 2px;
+    text-shadow: 0 0 10px var(--glow);
+  }
+  .badge {
+    background: rgba(0,240,255,0.1);
+    border: 1px solid var(--cyan);
+    color: var(--cyan);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    letter-spacing: 1px;
+    box-shadow: 0 0 8px var(--glow);
+  }
+  .hologram-viewport {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 12px;
+    position: relative;
+  }
+  #hologram-canvas {
+    background: transparent;
+    border-radius: 50%;
+    filter: drop-shadow(0 0 12px rgba(0,240,255,0.4));
+  }
+  .telemetry-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--dim);
+    margin-bottom: 8px;
+    padding: 0 4px;
+  }
+  .telemetry-val { color: var(--gold); font-weight: bold; }
+  .console {
+    flex: 1;
+    background: #020b18;
+    border: 1px solid var(--card-border);
+    border-radius: 6px;
+    padding: 12px;
+    height: 300px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 0.85rem;
+    margin-bottom: 12px;
+    box-shadow: inset 0 0 15px rgba(0,0,0,0.8);
+  }
+  .msg-user {
+    color: #fff;
+    align-self: flex-end;
+    background: rgba(0,240,255,0.15);
+    border: 1px solid rgba(0,240,255,0.3);
+    padding: 8px 12px;
+    border-radius: 6px;
+    max-width: 82%;
+  }
+  .msg-jarvis {
+    color: var(--cyan);
+    align-self: flex-start;
+    background: rgba(4,17,38,0.85);
+    border-left: 3px solid var(--cyan);
+    border-top: 1px solid var(--card-border);
+    border-right: 1px solid var(--card-border);
+    border-bottom: 1px solid var(--card-border);
+    padding: 8px 12px;
+    border-radius: 6px;
+    max-width: 88%;
+    box-shadow: 0 0 10px rgba(0,240,255,0.1);
+  }
+  .input-bar { display: flex; gap: 8px; margin-bottom: 10px; }
+  input[type="text"] {
+    flex: 1;
+    background: #04142d;
+    border: 1px solid var(--card-border);
+    color: #fff;
+    padding: 12px 14px;
+    border-radius: 4px;
+    font-size: 0.95rem;
+    outline: none;
+    transition: all 0.2s;
+  }
+  input[type="text"]:focus {
+    border-color: var(--cyan);
+    box-shadow: 0 0 12px var(--glow);
+  }
+  button {
+    background: #051a3b;
+    color: var(--cyan);
+    border: 1px solid var(--cyan);
+    padding: 12px 18px;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 1px;
+  }
+  button:hover {
+    background: var(--cyan);
+    color: #000;
+    box-shadow: 0 0 12px var(--glow);
+  }
   .quick-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-  .q-btn { font-size: 0.8rem; padding: 10px 4px; text-align: center; }
+  .q-btn {
+    font-size: 0.75rem;
+    padding: 10px 4px;
+    text-align: center;
+    background: #041126;
+    border: 1px solid var(--card-border);
+    color: var(--text);
+  }
+  .q-btn:hover { border-color: var(--gold); color: var(--gold); }
 </style>
 </head>
 <body>
 <header>
-  <div class="title">◆ J.A.R.V.I.S. BUTLER ◆</div>
-  <div class="badge" id="mode-badge">OFFLINE / ONLINE READY</div>
+  <div class="title">⫸ J.A.R.V.I.S. // QUANTUM HUD</div>
+  <div class="badge" id="mode-badge">MK-LXXXV ARMED</div>
 </header>
-<div class="console" id="console">
-  <div class="msg-jarvis">J.A.R.V.I.S. Mark-III online, sir. Standing ready for your directive or schedule inquiry.</div>
+
+<div class="hologram-viewport">
+  <canvas id="hologram-canvas" width="220" height="220"></canvas>
 </div>
+
+<div class="telemetry-row">
+  <div>STATUS: <span class="telemetry-val" id="tel-status">OPTIMAL</span></div>
+  <div>DEFENSE: <span class="telemetry-val">ASIMOV ENFORCED</span></div>
+  <div>UPLINK: <span class="telemetry-val">0.8ms</span></div>
+</div>
+
+<div class="console" id="console">
+  <div class="msg-jarvis">[J.A.R.V.I.S. Mark-LXXXV]: Quantum holographic core synchronized. Standing ready for your directive, sir.</div>
+</div>
+
 <div class="input-bar">
   <input type="text" id="cmd-input" placeholder="Directive, sir (or 'what is my schedule?')..." autofocus />
-  <button id="send-btn" onclick="sendCommand()">TRANSMIT</button>
-  <button onclick="toggleVoice()" id="mic-btn" style="border-color: #d4af37; color: #d4af37;">🎤</button>
+  <button id="send-btn" onclick="sendCommand()">⚡ TRANSMIT</button>
+  <button onclick="toggleVoice()" id="mic-btn" style="border-color: var(--gold); color: var(--gold);">🎤</button>
 </div>
+
 <div class="quick-grid">
   <button class="q-btn" onclick="quickSend('daily briefing')">📋 Briefing</button>
   <button class="q-btn" onclick="quickSend('what is on my schedule today')">📅 Schedule</button>
   <button class="q-btn" onclick="quickSend('system vitals')">⚡ Vitals</button>
-  <button class="q-btn" onclick="quickSend('open notepad')">📝 Notepad</button>
+  <button class="q-btn" onclick="quickSend('lock my device')">🔒 Lock</button>
 </div>
+
 <script>
+  // ── Holographic Arc Reactor Canvas Animation ──
+  const canvas = document.getElementById('hologram-canvas');
+  const ctx = canvas.getContext('2d');
+  let angle = 0;
+
+  function renderHologram() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    angle += 0.025;
+
+    // Outer Segmented Ring
+    ctx.strokeStyle = '#00f0ff';
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 6; i++) {
+      ctx.beginPath();
+      const start = angle * 0.8 + (i * Math.PI / 3);
+      ctx.arc(cx, cy, 85, start, start + 0.35);
+      ctx.stroke();
+    }
+
+    // Concentric Gyroscopic Ellipse
+    ctx.strokeStyle = '#ffd700';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, 96, 35 + Math.sin(angle * 1.2) * 10, angle * 0.5, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Inner Counter-Rotating Ring
+    ctx.strokeStyle = 'rgba(0, 240, 255, 0.6)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 60, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Spokes
+    ctx.strokeStyle = '#00f0ff';
+    ctx.lineWidth = 1.5;
+    for (let i = 0; i < 8; i++) {
+      const a = -angle * 1.5 + (i * Math.PI / 4);
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(a) * 20, cy + Math.sin(a) * 20);
+      ctx.lineTo(cx + Math.cos(a) * 58, cy + Math.sin(a) * 58);
+      ctx.stroke();
+    }
+
+    // Singularity Core
+    const pulse = Math.sin(angle * 3) * 3;
+    const grad = ctx.createRadialGradient(cx, cy, 2, cx, cy, 18 + pulse);
+    grad.addColorStop(0, '#ffffff');
+    grad.addColorStop(0.4, '#00f0ff');
+    grad.addColorStop(1, 'transparent');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 18 + pulse, 0, Math.PI * 2);
+    ctx.fill();
+
+    requestAnimationFrame(renderHologram);
+  }
+  renderHologram();
+
+  // ── Console & Communication ──
   const consoleBox = document.getElementById('console');
   const input = document.getElementById('cmd-input');
   input.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendCommand(); });
