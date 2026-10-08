@@ -352,6 +352,41 @@ class LocalIntelligence:
             hud_telemetry.play_tactical_sound_fx(fx_type)
             return True, f"Tactical audio effect '{fx_type}' synthesized and played, sir."
 
+        # Digital Marketing Suite - Master Campaign & Specialized Sub-Engines
+        mkt_match = re.match(r"^(?:run|launch|generate|execute)\s+(?:a\s+)?digital\s+marketing(?:\s+campaign)?(?:\s+for|\s+in)?(.*)$", clean_lower)
+        if mkt_match or any(p in clean_lower for p in ["run digital marketing", "launch digital marketing", "digital marketing campaign", "marketing suite"]):
+            from tools.digital_marketing_suite import marketing_suite
+            corr = mkt_match.group(1).strip() if mkt_match and mkt_match.group(1) else "Ambattur"
+            if not corr:
+                corr = "Ambattur"
+            marketing_suite.execute_full_marketing_stack(corr)
+            return True, marketing_suite.format_suite_voice_summary(corr)
+
+        # Skill 1: SEO & Local SEO
+        if any(p in clean_lower for p in ["seo recommendations", "generate seo keywords", "local seo", "seo keywords", "seo metadata"]):
+            from tools.digital_marketing_seo import seo_engine
+            return True, seo_engine.format_voice_summary()
+
+        # Skill 2: Paid Ads (PPC & Social)
+        if any(p in clean_lower for p in ["google ads", "ppc campaign", "meta ads", "create search ad", "social ads"]):
+            from tools.digital_marketing_ads import ads_engine
+            return True, ads_engine.format_voice_summary()
+
+        # Skill 3: CRO & Landing Page Copy
+        if any(p in clean_lower for p in ["landing page copy", "cro audit", "a/b test hypotheses", "cro wireframe"]):
+            from tools.digital_marketing_cro import cro_engine
+            return True, cro_engine.format_voice_summary()
+
+        # Skill 4: Inbound Marketing & Video Scripts
+        if any(p in clean_lower for p in ["lead magnet", "video script", "video scripts", "inbound content"]):
+            from tools.digital_marketing_inbound import inbound_engine
+            return True, inbound_engine.format_voice_summary()
+
+        # Skill 5: Customer Nurture & Review Generation
+        if any(p in clean_lower for p in ["drip sequence", "nurture sequence", "review request", "customer nurture"]) or clean_lower in ["customer retention", "customer retention strategy"]:
+            from tools.digital_marketing_nurture import nurture_engine
+            return True, nurture_engine.format_voice_summary()
+
         # ─────────────────────────────────────────────────────────────────────
         # 2. Application, Folder & Script Launching
         # ─────────────────────────────────────────────────────────────────────
