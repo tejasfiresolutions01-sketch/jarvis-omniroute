@@ -34,8 +34,8 @@ class VoiceListener:
     def __init__(self):
         self.sample_rate = 16000
         self.chunk_size = 1600 # 100ms chunks at 16kHz
-        # Natural end-of-speech detection (1.8s silence threshold prevents mid-sentence interruptions)
-        self.pause_threshold = float(getattr(config, "VOICE_PAUSE_THRESHOLD", 1.8))
+        # Patient end-of-speech detection (2.0s silence threshold ensures user finishes entire sentence)
+        self.pause_threshold = float(getattr(config, "VOICE_PAUSE_THRESHOLD", 2.0))
         self.phrase_time_limit = float(getattr(config, "VOICE_PHRASE_TIME_LIMIT", 35.0))
         self.conversational_idle_timeout = float(getattr(config, "VOICE_CONVERSATIONAL_IDLE_TIMEOUT", 8.0))
         self.is_monitoring = False
@@ -59,7 +59,7 @@ class VoiceListener:
     def record_audio_utterance(self, timeout: float = 8.0, prompt_text: str = "") -> Optional[bytes]:
         """
         Records an audio utterance from the microphone.
-        Waits long enough for the user to conclude their thought (pause_threshold = 1.8s).
+        Waits long enough for the user to conclude their thought (pause_threshold = 2.0s).
         Returns raw 16-bit PCM mono bytes at 16000 Hz, or None if timed out/silence.
         """
         if prompt_text:
@@ -89,6 +89,9 @@ class VoiceListener:
                 else:
                     speech_threshold = max(160.0, min(ambient_rms * 1.35, 380.0))
 
+                # Hysteresis continuation threshold: holds speech active during softer mid-sentence words
+                continuation_threshold = max(ambient_rms * 1.15, speech_threshold * 0.70)
+
                 # 2. Main recording loop
                 while True:
                     # Check overall timeout before speech starts
@@ -103,7 +106,10 @@ class VoiceListener:
                     chunk_flt = chunk.astype(np.float32)
                     chunk_rms = float(np.sqrt(np.mean(chunk_flt ** 2)))
 
-                    if chunk_rms >= speech_threshold:
+                    # Use speech_threshold to trigger speech onset, and continuation_threshold to maintain active speech
+                    active_threshold = continuation_threshold if has_started_speaking else speech_threshold
+
+                    if chunk_rms >= active_threshold:
                         # User is actively speaking
                         has_started_speaking = True
                         silence_duration = 0.0
@@ -113,7 +119,7 @@ class VoiceListener:
                             # User has started speaking, but is currently pausing to breathe or think
                             recorded_frames.append(chunk)
                             silence_duration += (self.chunk_size / self.sample_rate)
-                            # Wait long enough for conversation to end! (1.8s natural human pause)
+                            # Wait long enough for conversation to end! (2.0s natural human pause)
                             if silence_duration >= self.pause_threshold:
                                 # User has completed their statement
                                 break
@@ -159,6 +165,115 @@ class VoiceListener:
 
         return ""
 
+    @staticmethod
+    def is_sentence_incomplete(text: str) -> bool:
+        """
+        Syntactic & Semantic Sentence Completion Sentinel.
+        Determines if an utterance is an incomplete fragment or trailing clause.
+        Returns True if J.A.R.V.I.S. should wait for the user to finish their sentence.
+        """
+        if not text or not text.strip():
+            return False
+
+        clean = text.strip().lower()
+        tokens = clean.split()
+        if not tokens:
+            return False
+
+        # Standalone single-word directives that ARE complete sentences
+        COMPLETE_STANDALONE = {
+            "stop", "pause", "resume", "cancel", "status", "mute", "unmute",
+            "exit", "quit", "sleep", "hello", "hi", "hey", "yes", "no", "yeah", "nope",
+            "thanks", "goodbye", "help", "time", "date", "weather", "standby", "clear",
+            "restart", "reload", "abort", "confirm", "proceed", "continue"
+        }
+        if len(tokens) == 1:
+            return tokens[0] not in COMPLETE_STANDALONE
+
+        # Common short conversational wake/fillers that are not full directives
+        SHORT_FILLERS = {
+            "hey jarvis", "okay jarvis", "ok jarvis", "jarvis please",
+            "can you", "could you", "would you", "will you", "i want", "i need",
+            "tell me", "what is", "how is", "where is", "who is", "why is",
+            "open the", "check the", "show me", "give me", "look up", "search for"
+        }
+        if len(tokens) == 2 and f"{tokens[0]} {tokens[1]}" in SHORT_FILLERS:
+            return True
+
+        # Check last token stripped of punctuation
+        last_word = re.sub(r"[^a-z0-9]", "", tokens[-1])
+        if not last_word:
+            return False
+
+        # 1. Prepositions
+        INCOMPLETE_PREPOSITIONS = {
+            "to", "for", "with", "about", "at", "in", "on", "from", "into", "onto",
+            "by", "of", "off", "through", "over", "under", "between", "during",
+            "without", "against", "toward", "towards", "upon", "within"
+        }
+        if last_word in INCOMPLETE_PREPOSITIONS:
+            return True
+
+        # 2. Conjunctions & Subordinating Clauses
+        INCOMPLETE_CONJUNCTIONS = {
+            "and", "or", "but", "so", "because", "although", "since", "unless",
+            "while", "as", "if", "than", "that", "whether", "whereas", "though",
+            "either", "neither", "both"
+        }
+        if last_word in INCOMPLETE_CONJUNCTIONS:
+            return True
+
+        # 3. Articles, Determiners & Possessives
+        INCOMPLETE_DETERMINERS = {
+            "a", "an", "the", "my", "your", "his", "her", "its", "our", "their",
+            "this", "that", "these", "those", "some", "any", "every", "each",
+            "another", "no"
+        }
+        if last_word in INCOMPLETE_DETERMINERS:
+            return True
+
+        # 4. Trailing Auxiliary / Modal Verbs & Copulas
+        INCOMPLETE_AUXILIARIES = {
+            "is", "are", "was", "were", "am", "be", "been", "being",
+            "can", "could", "will", "would", "shall", "should", "may", "might", "must",
+            "do", "does", "did", "have", "has", "had"
+        }
+        if last_word in INCOMPLETE_AUXILIARIES and len(tokens) <= 4:
+            return True
+
+        # 5. Question markers when trailing
+        INCOMPLETE_QUESTION_WORDS = {
+            "what", "which", "who", "whom", "whose", "where", "when", "why", "how"
+        }
+        if last_word in INCOMPLETE_QUESTION_WORDS:
+            return True
+
+        # 6. Transitive Action Verbs requiring a direct object
+        TRANSITIVE_VERBS = {
+            "check", "open", "close", "show", "tell", "give", "find", "search",
+            "send", "make", "create", "turn", "set", "start", "launch", "play",
+            "read", "write", "schedule", "remind", "bring", "put", "take", "call",
+            "email", "delete", "remove", "add", "download", "upload", "copy"
+        }
+        if last_word in TRANSITIVE_VERBS:
+            return True
+
+        # 7. Incomplete trailing multi-word idioms/phrases
+        if len(tokens) >= 2:
+            penultimate = re.sub(r"[^a-z0-9]", "", tokens[-2])
+            trailing_two = f"{penultimate} {last_word}"
+            INCOMPLETE_PHRASES = {
+                "want to", "need to", "like to", "going to", "trying to", "supposed to",
+                "have to", "ought to", "able to", "used to", "look at", "listen to",
+                "search for", "look for", "wait for", "ask for", "turn on", "turn off",
+                "switch to", "bring up", "set up", "log in", "sign in", "reach out",
+                "get into", "point to", "speak with", "talk to", "connect to", "connect with"
+            }
+            if trailing_two in INCOMPLETE_PHRASES:
+                return True
+
+        return False
+
     def capture_and_authenticate(self, timeout: float = 8.0, prompt: str = "", play_chime: bool = True) -> Tuple[str, bool]:
         """
         Captures audio, verifies the user's voice biometrics (low & high frequency),
@@ -192,6 +307,23 @@ class VoiceListener:
             if voice.is_recently_spoken(text):
                 print(f"[Acoustic Sentinel]: Echo suppression discarded self-reflection: '{text}'")
                 return "", False
+
+            # Sentence Completion Sentinel:
+            # If the user paused but their statement is syntactically or semantically incomplete,
+            # wait and capture the rest of their sentence before responding.
+            continuation_attempts = 0
+            max_continuations = 2
+            while self.is_sentence_incomplete(text) and continuation_attempts < max_continuations:
+                continuation_attempts += 1
+                print(f"[Sentence Completion Sentinel]: Incomplete statement detected ('{text}'). Awaiting completion of Sir's sentence...")
+                next_pcm = self.record_audio_utterance(timeout=3.5, prompt_text="Awaiting sentence completion...")
+                if not next_pcm:
+                    # No further speech captured within continuation window
+                    break
+                next_text = self.speech_to_text(next_pcm)
+                if next_text:
+                    text = f"{text} {next_text}".strip()
+                    print(f"[Sentence Completion Sentinel]: Stitched sentence: '{text}'")
 
             if any(w in text.lower() for w in self.EXIT_CONVERSATION_WORDS):
                 self.close_conversation_lease()
