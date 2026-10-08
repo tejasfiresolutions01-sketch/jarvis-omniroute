@@ -20,7 +20,7 @@ TTS_RATE = os.getenv("TTS_RATE", "+0%")
 TTS_PITCH = os.getenv("TTS_PITCH", "+0Hz")
 
 # Voice Conversation & Biometric Settings
-VOICE_PAUSE_THRESHOLD = float(os.getenv("VOICE_PAUSE_THRESHOLD", "0.7")) # Seconds of silence before concluding utterance (rapid response)
+VOICE_PAUSE_THRESHOLD = float(os.getenv("VOICE_PAUSE_THRESHOLD", "1.8")) # Seconds of silence before concluding utterance (natural human pauses)
 VOICE_PHRASE_TIME_LIMIT = float(os.getenv("VOICE_PHRASE_TIME_LIMIT", "35.0"))
 VOICE_CONVERSATION_IDLE_TIMEOUT = float(os.getenv("VOICE_CONVERSATION_IDLE_TIMEOUT", "12.0"))
 VOICE_VERIFICATION_ENABLED = os.getenv("VOICE_VERIFICATION_ENABLED", "true").lower() in ("true", "1", "yes")

@@ -34,8 +34,8 @@ class VoiceListener:
     def __init__(self):
         self.sample_rate = 16000
         self.chunk_size = 1600 # 100ms chunks at 16kHz
-        # Ultra-rapid end-of-speech detection (0.7s silence threshold for sub-second voice turnaround)
-        self.pause_threshold = float(getattr(config, "VOICE_PAUSE_THRESHOLD", 0.7))
+        # Natural end-of-speech detection (1.8s silence threshold prevents mid-sentence interruptions)
+        self.pause_threshold = float(getattr(config, "VOICE_PAUSE_THRESHOLD", 1.8))
         self.phrase_time_limit = float(getattr(config, "VOICE_PHRASE_TIME_LIMIT", 35.0))
         self.conversational_idle_timeout = float(getattr(config, "VOICE_CONVERSATIONAL_IDLE_TIMEOUT", 8.0))
         self.is_monitoring = False
@@ -59,7 +59,7 @@ class VoiceListener:
     def record_audio_utterance(self, timeout: float = 8.0, prompt_text: str = "") -> Optional[bytes]:
         """
         Records an audio utterance from the microphone.
-        Waits long enough for the user to conclude their thought (pause_threshold = 2.2s).
+        Waits long enough for the user to conclude their thought (pause_threshold = 1.8s).
         Returns raw 16-bit PCM mono bytes at 16000 Hz, or None if timed out/silence.
         """
         if prompt_text:
@@ -72,15 +72,22 @@ class VoiceListener:
 
         try:
             with sd.InputStream(samplerate=self.sample_rate, channels=1, dtype='int16', blocksize=self.chunk_size) as stream:
-                # 1. Quick ambient noise calibration (0.3s)
+                # 1. Quick ambient noise baseline (0.2s)
                 ambient_frames = []
-                for _ in range(3):
+                for _ in range(2):
                     chunk, _ = stream.read(self.chunk_size)
                     ambient_frames.append(chunk)
                 ambient_arr = np.concatenate(ambient_frames).astype(np.float32)
-                ambient_rms = np.sqrt(np.mean(ambient_arr ** 2))
-                # Set dynamic speech energy threshold (sensitive to normal speaking volumes)
-                speech_threshold = max(160.0, float(ambient_rms * 1.35))
+                ambient_rms = float(np.sqrt(np.mean(ambient_arr ** 2)))
+
+                # Determine dynamic speech energy threshold
+                # If ambient_rms is high (>300), the user was already speaking when the stream opened
+                if ambient_rms > 300.0:
+                    speech_threshold = 180.0
+                    has_started_speaking = True
+                    recorded_frames.extend(ambient_frames)
+                else:
+                    speech_threshold = max(160.0, min(ambient_rms * 1.35, 380.0))
 
                 # 2. Main recording loop
                 while True:
@@ -94,26 +101,29 @@ class VoiceListener:
 
                     chunk, overflow = stream.read(self.chunk_size)
                     chunk_flt = chunk.astype(np.float32)
-                    chunk_rms = np.sqrt(np.mean(chunk_flt ** 2))
+                    chunk_rms = float(np.sqrt(np.mean(chunk_flt ** 2)))
 
                     if chunk_rms >= speech_threshold:
-                        # User is speaking
+                        # User is actively speaking
                         has_started_speaking = True
                         silence_duration = 0.0
                         recorded_frames.append(chunk)
                     else:
                         if has_started_speaking:
-                            # User has started speaking, but is currently pausing
+                            # User has started speaking, but is currently pausing to breathe or think
                             recorded_frames.append(chunk)
                             silence_duration += (self.chunk_size / self.sample_rate)
-                            # Wait long enough for conversation to end!
+                            # Wait long enough for conversation to end! (1.8s natural human pause)
                             if silence_duration >= self.pause_threshold:
                                 # User has completed their statement
                                 break
 
             if has_started_speaking and recorded_frames:
-                all_pcm = np.concatenate(recorded_frames).tobytes()
-                return all_pcm
+                # Ensure at least 0.25s of speech was collected to filter out transient pops
+                total_duration = len(recorded_frames) * (self.chunk_size / self.sample_rate)
+                if total_duration >= 0.25:
+                    all_pcm = np.concatenate(recorded_frames).tobytes()
+                    return all_pcm
         except Exception as e:
             print(f"[Microphone Warning]: SoundDevice capture failed ({e}), falling back...")
         return None
@@ -149,7 +159,7 @@ class VoiceListener:
 
         return ""
 
-    def capture_and_authenticate(self, timeout: float = 8.0, prompt: str = "") -> Tuple[str, bool]:
+    def capture_and_authenticate(self, timeout: float = 8.0, prompt: str = "", play_chime: bool = True) -> Tuple[str, bool]:
         """
         Captures audio, verifies the user's voice biometrics (low & high frequency),
         and returns (transcribed_text, is_authorized).
@@ -159,7 +169,8 @@ class VoiceListener:
             time.sleep(0.1)
         time.sleep(0.25)  # Acoustic echo buffer to prevent speaker feedback
 
-        play_wake_chime()
+        if play_chime:
+            play_wake_chime()
         pcm_bytes = self.record_audio_utterance(timeout=timeout, prompt_text=prompt)
         if not pcm_bytes:
             return "", False
@@ -235,7 +246,8 @@ class VoiceListener:
 
             text, is_auth = self.capture_and_authenticate(
                 timeout=self.conversational_idle_timeout,
-                prompt="Listening to Sir..."
+                prompt="Listening to Sir...",
+                play_chime=False
             )
 
             if not text:
@@ -289,10 +301,47 @@ class VoiceListener:
             except Exception:
                 pass
 
-            text, is_auth = self.capture_and_authenticate(timeout=8.0, prompt="Directive, sir: ")
-            if text and is_auth:
+            first_turn = True
+            while self.is_monitoring and not self.in_conversation_mode:
+                prompt_text = "Directive, sir: " if first_turn else "Follow-up directive, sir: "
+                turn_timeout = 8.0 if first_turn else 5.5
+                text, is_auth = self.capture_and_authenticate(
+                    timeout=turn_timeout,
+                    prompt=prompt_text,
+                    play_chime=first_turn
+                )
+                first_turn = False
+
+                if not text or not is_auth:
+                    self.close_conversation_lease()
+                    break
+
+                if any(w in text.lower() for w in self.EXIT_CONVERSATION_WORDS):
+                    self.close_conversation_lease()
+                    from core.voice import speak
+                    speak("Standing by, sir.")
+                    break
+
                 cb = getattr(self, "_callback", callback)
-                cb(text)
+                keep_running = cb(text)
+                if keep_running is False:
+                    self.close_conversation_lease()
+                    break
+
+                # Wait for response vocalization to complete before opening microphone for next turn
+                import core.voice as voice
+                while voice.check_is_speaking():
+                    time.sleep(0.1)
+                time.sleep(0.3)  # Acoustic buffer
+
+                if not self.has_active_conversation_lease():
+                    break
+
+            try:
+                from core.audio_visualizer import audio_visualizer
+                audio_visualizer.set_state("idle")
+            except Exception:
+                pass
             wake_word_engine.resume()
 
         if wake_word_engine.is_available:
