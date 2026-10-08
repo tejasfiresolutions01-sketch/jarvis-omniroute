@@ -91,6 +91,13 @@ class TestLocalIntelligenceSupremeIntents(unittest.TestCase):
         self.assertIn("omega", resp.lower())
         self.assertIn("high priority", resp.lower())
 
+    def test_voice_command_execution_directive(self):
+        """Verifies 'voice command execution' directive status."""
+        handled, resp = local_intelligence.evaluate_and_execute("voice command execution")
+        self.assertTrue(handled)
+        self.assertIn("voice command execution matrix", resp.lower())
+        self.assertIn("sentence completion sentinel", resp.lower())
+
 
 if __name__ == "__main__":
     unittest.main()

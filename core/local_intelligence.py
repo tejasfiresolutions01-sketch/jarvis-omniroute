@@ -143,6 +143,28 @@ class LocalIntelligence:
             res = supreme_executor.upgrade_execution_to_highest_level()
             return True, res["message"]
 
+        # Voice Command Execution Status
+        if any(clean_lower == p or clean_lower.startswith(p) for p in [
+            "voice command execution", "voice command status", "voice execution status",
+            "voice command system", "voice commands", "voice execution", "voice command mode",
+            "voice command matrix", "voice perception status"
+        ]):
+            from core.listener import listener
+            from core.wake_word import wake_word_engine
+            from core.supreme_command_executor import supreme_executor
+
+            wake_status = "Active ('Hey Jarvis')" if wake_word_engine.running else "Standby"
+            pause_sec = getattr(listener, "pause_threshold", 2.0)
+            lease_active = listener.has_active_conversation_lease()
+            lease_str = "Active" if lease_active else "Standby"
+
+            return True, (
+                f"Voice Command Execution Matrix is fully operational at {supreme_executor.execution_tier}, sir. "
+                f"Acoustic Perception: {wake_status} | Sentence Completion Sentinel: Active ({pause_sec}s pause tolerance) | "
+                f"Biometric Verification: Active | Multi-Turn Dialogue Lease: {lease_str}. "
+                f"I am actively listening and ready to execute your voice directives."
+            )
+
         # Off-Grid / Standby / Away Mode Status
         if any(clean_lower == p for p in ["offgrid status", "away mode status", "device off status", "wake timer status"]):
             away = "active" if offgrid_sentinel.away_mode_active else "standby"

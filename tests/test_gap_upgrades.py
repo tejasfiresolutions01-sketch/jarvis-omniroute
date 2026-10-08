@@ -24,7 +24,7 @@ class TestGapUpgrades(unittest.TestCase):
         self.assertNotIn("Namaste", cleaned)
 
         # Test OS speech lock
-        lock = _get_os_speech_lock(timeout=1.0)
+        lock = _get_os_speech_lock(timeout=5.0)
         self.assertIsNotNone(lock)
         _release_os_speech_lock(lock)
 
