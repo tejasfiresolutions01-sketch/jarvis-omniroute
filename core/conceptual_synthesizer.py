@@ -60,6 +60,47 @@ class ConceptualSynthesizer:
                 return True
         return False
 
+    OFFLINE_MECHANISTIC_ONTOLOGY = {
+        # Electricity & Electronics
+        "ac": "Alternating current reverses direction periodically and oscillates sinusoidally, making it exceptionally efficient for long-distance grid transmission through transformers.",
+        "alternating current": "Alternating current reverses direction periodically and oscillates sinusoidally, making it exceptionally efficient for long-distance grid transmission through transformers.",
+        "dc": "Direct current flows unidirectionally with constant polarity, making it the indispensable standard for battery storage, semiconductor logic, and photovoltaic solar systems.",
+        "direct current": "Direct current flows unidirectionally with constant polarity, making it the indispensable standard for battery storage, semiconductor logic, and photovoltaic solar systems.",
+        "voltage": "Voltage represents electrical potential difference, analogous to pressure in a hydraulic circuit that compels electrons to move between two points.",
+        "current": "Current is the physical rate of electric charge flow through a conductor, quantified in amperes representing coulombs per second.",
+        "transformer": "A transformer alters alternating voltage levels through mutual electromagnetic induction between primary and secondary copper windings without changing frequency.",
+        "inverter": "An inverter converts direct current from battery banks or solar arrays into alternating current using high-frequency switching transistors like MOSFETs or IGBTs.",
+
+        # Computing & Architecture
+        "cpu": "The central processing unit features a modest count of exceptionally powerful cores optimized for serial computation, rapid clock frequencies, and complex branching logic.",
+        "gpu": "The graphics processing unit houses thousands of smaller, streamlined cores engineered for massive parallel mathematical throughput, making it ideal for rendering and neural matrix multiplications.",
+        "ram": "Random-access memory is ultra-fast volatile semiconductor storage that holds active operating system instructions and application working sets for immediate processor execution.",
+        "rom": "Read-only memory is non-volatile permanent semiconductor storage that preserves foundational startup firmware such as the BIOS even when powered down.",
+        "compiler": "A compiler translates high-level human-readable source code in its entirety into native binary machine instructions prior to execution, producing optimal execution velocity.",
+        "interpreter": "An interpreter reads and executes source code instructions sequentially line by line at runtime, offering interactive flexibility at the expense of computational speed.",
+        "process": "A process is an isolated operating system execution context possessing its own dedicated virtual address space, file handles, and security tokens.",
+        "thread": "A thread is a lightweight unit of execution within a parent process, sharing that process's heap memory and resources while maintaining its own call stack and program counter.",
+        "operating system": "An operating system is the master supervisory software suite managing hardware resources, memory scheduling, file systems, and peripheral communication across the workstation.",
+        "kernel": "The kernel is the foundational core of the operating system that resides permanently in memory, directly orchestrating CPU time slices, hardware interrupts, and memory paging.",
+
+        # AI & Machine Learning
+        "artificial intelligence": "Artificial intelligence is the broad engineering discipline of constructing synthetic computational systems capable of performing reasoning, decision-making, and language tasks typically requiring human intelligence.",
+        "machine learning": "Machine learning is a subset of artificial intelligence focused on mathematical and statistical models that automatically extract patterns and generalize from data without explicit procedural programming.",
+        "deep learning": "Deep learning employs deep artificial neural networks featuring numerous hidden layers to hierarchically extract abstract features from raw inputs.",
+        "large language model": "A large language model is a neural network based on the transformer architecture, utilizing multi-head self-attention mechanisms trained over massive linguistic corpora to predict token probabilities.",
+
+        # Fire Safety Engineering & Compliance
+        "is 2190": "Indian Standard 2190 establishes mandatory national guidelines for the selection, installation, maintenance, and hydraulic testing of portable first-aid fire extinguishers across commercial and industrial premises.",
+        "is 2190 standards": "Indian Standard 2190 establishes mandatory national guidelines for the selection, installation, maintenance, and hydraulic testing of portable first-aid fire extinguishers across commercial and industrial premises.",
+        "abc dry chemical powder": "ABC dry chemical powder extinguishers utilize monoammonium phosphate that melts at approximately 180 degrees Celsius to blanket fuel and break chemical combustion chain reactions across Class A, B, and C fires.",
+        "co2 extinguisher": "Carbon dioxide extinguishers discharge pressurized liquid CO2 as an expanding gas, displacing atmospheric oxygen and rapidly cooling the fire zone without leaving residue, making them ideal for live electrical equipment.",
+        "clean agent": "Clean agent extinguishers employ eco-friendly halocarbon compounds such as HFC-236fa or NOVEC that vaporize instantly upon discharge, extinguishing flames thermally without conducting electricity or damaging sensitive electronics.",
+        "hydro testing": "Hydraulic pressure testing verifies the structural integrity of fire extinguisher shells using pressurized water, ensuring cylinders withstand operational internal pressures without catastrophic rupture.",
+        "fire extinguisher refilling": "Fire extinguisher refilling entails evacuating spent or degraded extinguishing media, inspecting internal valve assemblies, refilling with certified extinguishing agents, and pressurizing with high-purity dry nitrogen in compliance with IS 2190 standards.",
+        "amc": "An Annual Maintenance Contract provides scheduled quarterly or half-yearly fire safety inspections, weight audits, emergency standby cylinders, and regulatory compliance certification for manufacturing and warehousing facilities.",
+        "fire audit": "A fire safety audit systematically reviews a facility's fire risks, exit corridors, extinguisher placement densities, and emergency readiness to ensure total compliance with state fire rescue directives."
+    }
+
     COMMON_ACRONYMS = {
         "ac": "Alternating current",
         "dc": "Direct current",
@@ -172,6 +213,14 @@ class ConceptualSynthesizer:
 
     def synthesize_difference(self, item1: str, item2: str) -> Optional[str]:
         """Contrasts two concepts side by side with mechanistic clarity."""
+        c1 = item1.strip().lower()
+        c2 = item2.strip().lower()
+        # Fast offline mechanistic check (< 1ms)
+        desc1 = self.OFFLINE_MECHANISTIC_ONTOLOGY.get(c1)
+        desc2 = self.OFFLINE_MECHANISTIC_ONTOLOGY.get(c2)
+        if desc1 and desc2:
+            return f"In fundamental terms, sir: {desc1} In contrast, {desc2}"
+
         with ThreadPoolExecutor(max_workers=2) as executor:
             f1 = executor.submit(self.fetch_wikipedia_summary, item1)
             f2 = executor.submit(self.fetch_wikipedia_summary, item2)
@@ -228,6 +277,19 @@ class ConceptualSynthesizer:
 
         if not topic:
             return None
+
+        topic_lower = topic.strip().lower()
+        # Fast offline mechanistic check (< 1ms)
+        if topic_lower in self.OFFLINE_MECHANISTIC_ONTOLOGY:
+            speech = f"At its core, sir: {self.OFFLINE_MECHANISTIC_ONTOLOGY[topic_lower]}"
+            self._cache[clean_key] = speech
+            return speech
+
+        for k, v in self.OFFLINE_MECHANISTIC_ONTOLOGY.items():
+            if f" {k} " in f" {clean_key} " or (topic_lower and k == topic_lower):
+                speech = f"At its core, sir: {v}"
+                self._cache[clean_key] = speech
+                return speech
 
         # Fetch knowledge extract concurrently
         with ThreadPoolExecutor(max_workers=2) as executor:

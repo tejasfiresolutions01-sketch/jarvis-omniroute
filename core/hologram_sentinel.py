@@ -101,13 +101,14 @@ class HologramSentinel:
             return False
 
         self._last_trigger_time = now
-        print(f"[Holographic Sentinel]: Summoning Tactical HUD (Reason: {reason})")
 
         _attach_to_interactive_desktop()
         hwnd = self.get_hud_hwnd()
 
         if hwnd:
             try:
+                if reason in ["manual", "voice_command", "device_startup"]:
+                    print(f"[Holographic Sentinel]: Summoning Tactical HUD (Reason: {reason})")
                 # Restore window if minimized / withdrawn
                 self.user32.ShowWindow(hwnd, 9)  # SW_RESTORE
                 self.user32.BringWindowToTop(hwnd)
@@ -145,6 +146,7 @@ class HologramSentinel:
         # If not running or window could not be found, spawn HUD process
         try:
             self._last_spawn_time = now
+            print(f"[Holographic Sentinel]: Spawning Tactical HUD subprocess (Reason: {reason})")
             hud_script = str(config.BASE_DIR / "ui" / "hud.py")
             self._hud_proc = subprocess.Popen(
                 [sys.executable, hud_script],

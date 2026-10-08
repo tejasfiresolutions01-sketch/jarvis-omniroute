@@ -1,4 +1,5 @@
 import sqlite3
+from contextlib import contextmanager
 import re
 from datetime import datetime, date
 from typing import List, Dict, Any, Optional
@@ -16,10 +17,14 @@ class LearningMatrix:
         self.db_path = db_path
         self._init_db()
 
-    def _get_connection(self) -> sqlite3.Connection:
+    @contextmanager
+    def _get_connection(self):
         conn = sqlite3.connect(str(self.db_path))
         conn.row_factory = sqlite3.Row
-        return conn
+        try:
+            yield conn
+        finally:
+            conn.close()
 
     def _init_db(self):
         with self._get_connection() as conn:

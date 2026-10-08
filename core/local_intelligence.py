@@ -169,10 +169,10 @@ class LocalIntelligence:
         from tools.google_services import google_services
 
         # Gmail Open / Compose
-        if clean_lower in ["open gmail", "check gmail", "launch gmail", "go to gmail", "gmail"]:
+        if clean_lower in ["open gmail", "check gmail", "launch gmail", "go to gmail", "gmail", "check inbox"]:
             return True, google_services.open_gmail()
 
-        gmail_compose_match = re.match(r"^(?:compose|send|write)\s+(?:an?\s+)?(?:email|mail|gmail)(?:\s+to\s+(.+?))?(?:\s+about\s+(.+))?$", clean_lower)
+        gmail_compose_match = re.match(r"^(?:compose|send|write|draft)\s+(?:an?\s+)?(?:email|mail|gmail)(?:\s+(?:to|addressed to)\s+(.+?))?(?:\s+(?:about|subject|with subject)\s+(.+))?$", clean_lower)
         if gmail_compose_match:
             to_addr = gmail_compose_match.group(1) or ""
             subject_or_topic = gmail_compose_match.group(2) or ""
@@ -182,7 +182,7 @@ class LocalIntelligence:
         if clean_lower in ["open google maps", "open maps", "launch maps", "google maps"]:
             return True, google_services.search_maps("", open_browser=True)
 
-        maps_dir_match = re.match(r"^(?:get\s+directions|directions|navigate|route)\s+(?:from\s+(.+?)\s+to\s+(.+)|to\s+(.+))$", clean_lower)
+        maps_dir_match = re.match(r"^(?:get\s+directions|directions|navigate|route|find\s+route|show\s+route)\s+(?:from\s+(.+?)\s+to\s+(.+)|to\s+(.+?)(?:\s+on\s+(?:google\s+)?maps)?)$", clean_lower)
         if maps_dir_match:
             if maps_dir_match.group(1) and maps_dir_match.group(2):
                 orig = maps_dir_match.group(1).strip()
@@ -192,19 +192,35 @@ class LocalIntelligence:
                 dest = maps_dir_match.group(3).strip()
                 return True, google_services.search_maps(dest)
 
-        maps_search_match = re.match(r"^(?:search\s+(?:google\s+)?maps\s+(?:for\s+)?|maps\s+(?:search\s+)?)(.+)$", clean_lower)
+        maps_search_match = re.match(r"^(?:search\s+(?:google\s+)?maps\s+(?:for\s+)?|maps\s+(?:search\s+)?|find\s+on\s+(?:google\s+)?maps\s+)(.+)$", clean_lower)
         if maps_search_match:
             m_target = maps_search_match.group(1).strip()
             return True, google_services.search_maps(m_target)
 
         # Google Search Engine
-        google_search_match = re.match(r"^(?:search\s+google\s+(?:for\s+)?|google\s+(?:search\s+)?|google\s+)(.+)$", clean_lower)
+        google_search_match = re.match(r"^(?:search\s+google\s+(?:for\s+)?|google\s+(?:search\s+)?|google\s+|find\s+on\s+google\s+)(.+)$", clean_lower)
         if google_search_match:
             g_target = google_search_match.group(1).strip()
             if not any(g_target.startswith(w) for w in ["drive", "docs", "sheets", "calendar"]):
                 google_services.search_google(g_target, open_browser=True)
                 summary = google_services.format_search_summary(g_target)
                 return True, summary
+
+        # System Hardware Vitals (CPU, RAM, Disk)
+        if any(p in clean_lower for p in [
+            "system vitals", "hardware vitals", "hardware status", "vitals",
+            "cpu usage", "cpu status", "ram usage", "ram status", "memory status",
+            "memory usage", "disk space", "storage status", "disk status"
+        ]):
+            import psutil
+            cpu = psutil.cpu_percent(interval=0.1)
+            mem = psutil.virtual_memory()
+            disk = psutil.disk_usage("C:\\")
+            return True, (
+                f"Workstation vitals are healthy, sir. CPU load is at {cpu} percent, "
+                f"system memory usage is at {mem.percent} percent ({mem.used // (1024**2)} MB used out of {mem.total // (1024**2)} MB), "
+                f"and primary disk storage has {disk.free // (1024**3)} gigabytes free."
+            )
 
         # Campaign Language Settings
         if any(p in clean_lower for p in [

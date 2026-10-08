@@ -114,6 +114,16 @@ class InternetSentinel:
             except Exception as e:
                 logger.error(f"[Internet Sentinel]: Error launching gateway on reconnect: {e}")
 
+            try:
+                # 2. Synchronize and run pending cloud/offgrid tasks upon internet return
+                from core.head_commander import head_commander
+                pending = head_commander.list_tasks(status="pending")
+                if pending:
+                    logger.info(f"[Internet Sentinel]: Internet restored. Auto-dispatching {len(pending)} pending tasks...")
+                    threading.Thread(target=head_commander.run_all_pending_tasks, daemon=True).start()
+            except Exception as e:
+                logger.error(f"[Internet Sentinel]: Error dispatching tasks on reconnect: {e}")
+
             # Fire any registered callbacks
             for cb in list(self._on_connect_callbacks):
                 try:

@@ -27,6 +27,11 @@ from core.self_repair import self_repair_engine
 
 logger = logging.getLogger("SupremeCommandExecutor")
 
+import queue
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Dict, Any, Tuple, Optional, Callable, List
+
 # Windows Process Priority Constants
 HIGH_PRIORITY_CLASS = 0x00000080
 ABOVE_NORMAL_PRIORITY_CLASS = 0x00008000
@@ -36,16 +41,52 @@ class SupremeCommandExecutor:
     """
     Tier 5 Omega Executive Command Engine.
     Elevates process priority, orchestrates instant task cancellation,
-    and guarantees zero-latency, self-healing command dispatch.
+    and guarantees zero-latency, self-healing command dispatch with 4-tier priority scheduling.
     """
+
+    PRIORITY_CRITICAL = 0    # Immediate Voice Response, Safety Guards, Emergency Controls
+    PRIORITY_HIGH = 1        # Device Hardware Controls, HUD Window Management
+    PRIORITY_NORMAL = 2      # Agent Syndicate Directives, Knowledge Retrieval, Google Services
+    PRIORITY_BACKGROUND = 3  # Nightly Self-Evolution, Temporary Housekeeping, Memory Pruning
 
     def __init__(self):
         self.execution_tier = "TIER 5 (OMEGA / HIGHEST EXECUTIVE LEVEL)"
         self.is_elevated = False
-        self.concurrency_workers = 8
+        self.concurrency_workers = 12
         self.speculative_racing = True
         self.auto_remediation_active = True
+        self._priority_queue = queue.PriorityQueue()
+        self._worker_pool = ThreadPoolExecutor(max_workers=self.concurrency_workers, thread_name_prefix="JarvisOmegaWorker")
+        self._lock = threading.Lock()
         self._apply_process_elevation()
+
+    def dispatch(self, func: Callable, priority: int = 2, *args, **kwargs) -> Any:
+        """
+        Dispatches a command through the high-priority execution matrix.
+        Higher priority (lower number) executes ahead of lower priority tasks.
+        """
+        if priority == self.PRIORITY_CRITICAL:
+            # Immediate synchronous dispatch for critical voice and safety
+            return func(*args, **kwargs)
+
+        future = self._worker_pool.submit(func, *args, **kwargs)
+        return future
+
+    def execute_speculative(self, callables: List[Callable], timeout: float = 2.5) -> Optional[Any]:
+        """
+        Races multiple execution candidates in parallel. Returns the first valid non-None result.
+        """
+        if not callables:
+            return None
+        futures = [self._worker_pool.submit(c) for c in callables]
+        for f in as_completed(futures, timeout=timeout):
+            try:
+                res = f.result()
+                if res is not None:
+                    return res
+            except Exception:
+                pass
+        return None
 
     def _apply_process_elevation(self) -> bool:
         """

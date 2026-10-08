@@ -69,12 +69,12 @@ class SelfRepairEngine:
         logger.info(f"[Self Repair]: Inspecting and repairing audio subsystem ({details})...")
         cleared_items = 0
 
-        # 1. Clear stale speech lock if it has been held too long (> 10s)
+        # 1. Clear stale speech lock if it has been held too long (> 3s)
         try:
             lock_path = Path(config.BASE_DIR) / "logs" / "jarvis_speech.lock"
             if lock_path.exists():
                 mtime = lock_path.stat().st_mtime
-                if time.time() - mtime > 10.0:
+                if time.time() - mtime > 3.0:
                     try:
                         lock_path.unlink()
                         cleared_items += 1

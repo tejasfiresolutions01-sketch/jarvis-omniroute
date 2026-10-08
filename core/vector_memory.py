@@ -6,6 +6,7 @@ backed by SQLite persistence and vectorized NumPy acceleration.
 """
 
 import sqlite3
+from contextlib import contextmanager
 import json
 import re
 import hashlib
@@ -96,10 +97,14 @@ class VectorMemoryStore:
         self._init_db()
         self._load_cache()
 
-    def _get_connection(self) -> sqlite3.Connection:
+    @contextmanager
+    def _get_connection(self):
         conn = sqlite3.connect(str(self.db_path))
         conn.row_factory = sqlite3.Row
-        return conn
+        try:
+            yield conn
+        finally:
+            conn.close()
 
     def _init_db(self):
         with self._lock:

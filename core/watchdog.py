@@ -28,8 +28,16 @@ class AmbientWatchdog:
                     if battery and not battery.power_plugged and battery.percent <= 15:
                         now = time.time()
                         if now - self._last_battery_alert > 300: # Alert once per 5 minutes
-                            speak(f"Pardon the interruption, sir. Main power reserves have dropped to {battery.percent}%. Please connect external power.")
+                            speak(f"Pardon the interruption, sir. Main power reserves have dropped to {battery.percent} percent. Please connect external power.")
                             self._last_battery_alert = now
+
+                    # Process Priority Auto-Elevation Maintenance
+                    try:
+                        p = psutil.Process()
+                        if p.nice() != psutil.HIGH_PRIORITY_CLASS:
+                            p.nice(psutil.HIGH_PRIORITY_CLASS)
+                    except Exception:
+                        pass
                 except Exception:
                     pass
                 time.sleep(30)

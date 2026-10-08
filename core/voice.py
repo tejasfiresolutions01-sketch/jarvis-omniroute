@@ -122,6 +122,7 @@ def clean_for_speech(text: str) -> str:
         (r"\betc\.\b", "and so forth", re.IGNORECASE),
         (r"\bw/\b", "with", re.IGNORECASE),
         (r"\bw/o\b", "without", re.IGNORECASE),
+        (r"\b(?:namaste|vanakkam|namaskar)\b", "Greetings", re.IGNORECASE),
     ]
     for pat, rep, flags in replacements:
         s = re.sub(pat, rep, s, flags=flags)
@@ -133,19 +134,34 @@ def clean_for_speech(text: str) -> str:
 
     return s
 
-def _get_os_speech_lock() -> Optional[Any]:
-    """Cross-process lock to guarantee only ONE process speaks across Windows."""
+import msvcrt
+
+def _get_os_speech_lock(timeout: float = 2.0) -> Optional[Any]:
+    """Cross-process exclusive lock to guarantee strictly ONE process speaks across Windows."""
     try:
         lock_file = Path(config.BASE_DIR) / "logs" / "jarvis_speech.lock"
         lock_file.parent.mkdir(parents=True, exist_ok=True)
-        f = open(lock_file, "a+")
-        return f
+        f = open(lock_file, "w+")
+        start = time.time()
+        while time.time() - start < timeout:
+            try:
+                msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
+                return f
+            except (BlockingIOError, PermissionError, OSError):
+                time.sleep(0.05)
+        f.close()
+        return None
     except Exception:
         return None
 
 def _release_os_speech_lock(lock_handle):
     try:
         if lock_handle:
+            try:
+                lock_handle.seek(0)
+                msvcrt.locking(lock_handle.fileno(), msvcrt.LK_UNLCK, 1)
+            except Exception:
+                pass
             lock_handle.close()
     except Exception:
         pass
@@ -163,7 +179,7 @@ def _process_speech_queue():
             if sync_event:
                 sync_event.set()
             _speech_queue.task_done()
-        except Exception as e:
+        except Exception:
             time.sleep(0.1)
 
 def _ensure_worker_started():
@@ -179,7 +195,7 @@ def speak(text: str):
     Synthesizes speech using British Butler persona asynchronously.
     Enforces strict single-voice output:
     - Automatically deduplicates and suppresses repeated vocalizations within 4.5 seconds.
-    - Serializes all speech into a single worker thread to prevent overlapping or 3x voices.
+    - Serializes all speech into a single worker thread to prevent overlapping or multiple voices.
     - Supports acoustic barge-in / interruption.
     """
     if not text or not text.strip():
@@ -240,7 +256,13 @@ def speak_sync(text: str):
             return
         _recent_spoken[norm_key] = now
 
-    _speak_worker(clean_text)
+    sync_event = threading.Event()
+    _ensure_worker_started()
+    try:
+        _speech_queue.put((clean_text, sync_event))
+        sync_event.wait(timeout=15.0)
+    except Exception:
+        _speak_worker(clean_text)
 
 def _speak_worker(text: str):
     global is_speaking, _last_spoken_text
@@ -249,6 +271,9 @@ def _speak_worker(text: str):
         return
 
     lock_handle = _get_os_speech_lock()
+    if not lock_handle:
+        # Another process is actively speaking; suppress overlapping vocalization
+        return
     try:
         with _speak_lock:
             is_speaking = True
