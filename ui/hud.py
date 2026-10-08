@@ -21,6 +21,7 @@ from core.listener import listener
 from core.audio_visualizer import audio_visualizer
 from tools.global_hotkey import global_hotkey
 from tools.weather_tools import get_weather
+from tools.hud_controller import hud_controller
 from ui.hud_telemetry_matrix import hud_telemetry
 import config
 
@@ -198,6 +199,9 @@ class TacticalHUD:
                 ctypes.windll.user32.SetForegroundWindow(hwnd)
         except Exception:
             pass
+
+        # Register instance with HUD controller IPC bridge
+        hud_controller.register_hud_instance(self)
 
     def _play_fx(self, name: str = "target_lock"):
         """Plays non-blocking tactical audio feedback."""
@@ -995,6 +999,28 @@ class TacticalHUD:
         # 5. Hardware Vitals Update
         self._update_hardware_telemetry()
 
+        # 6. Poll IPC commands and broadcast state
+        try:
+            for ipc_cmd in hud_controller.poll_pending_commands():
+                hud_controller._execute_direct_command(ipc_cmd)
+        except Exception:
+            pass
+
+        if now - getattr(self, "_last_state_broadcast", 0.0) > 1.0:
+            self._last_state_broadcast = now
+            try:
+                hud_controller.update_state(
+                    is_fullscreen=self.is_fullscreen,
+                    active_model=self.active_3d_model,
+                    yaw=self.model_yaw,
+                    pitch=self.model_pitch,
+                    scale=self.model_scale,
+                    auto_spin=self.auto_spin,
+                    theme_name=self.theme.get("name", "STARK HOLOGRAPHIC CYAN")
+                )
+            except Exception:
+                pass
+
         self.root.after(40, self._animate_reactor)
 
     def _animate_spectrum(self):
@@ -1226,6 +1252,7 @@ class TacticalHUD:
         try:
             self.root.mainloop()
         finally:
+            hud_controller.unregister_hud_instance()
             global_hotkey.stop()
             audio_visualizer.stop()
 

@@ -374,6 +374,70 @@ class LocalIntelligence:
             hud_telemetry.play_tactical_sound_fx(fx_type)
             return True, f"Tactical audio effect '{fx_type}' synthesized and played, sir."
 
+        # Holographic Projector Fullscreen Mode (F11)
+        if any(p in clean_lower for p in [
+            "projector mode", "fullscreen projector", "toggle projector mode",
+            "fullscreen hud", "fullscreen mode", "toggle fullscreen", "holographic fullscreen",
+            "exit projector mode", "exit fullscreen", "exit fullscreen mode", "windowed mode", "windowed hud"
+        ]):
+            from tools.hud_controller import hud_controller
+            if any(p in clean_lower for p in ["exit projector mode", "exit fullscreen", "exit fullscreen mode", "windowed mode", "windowed hud"]):
+                hud_controller.toggle_fullscreen(state=False)
+                return True, "Holographic display reverted to windowed mode, sir."
+            elif any(p in clean_lower for p in ["enter projector mode", "fullscreen projector", "fullscreen mode", "fullscreen hud"]):
+                hud_controller.toggle_fullscreen(state=True)
+                return True, "Borderless Holographic Projector Mode engaged, sir. Canvas is set to pitch-black for true optical floating projection."
+            else:
+                hud_controller.toggle_fullscreen()
+                return True, "Toggled holographic projector mode, sir."
+
+        # Holographic 3D Wireframe Model Selection
+        if any(p in clean_lower for p in ["show helmet", "3d helmet", "show 3d helmet", "switch to helmet", "iron man helmet", "display 3d helmet", "wireframe helmet", "project helmet"]):
+            from tools.hud_controller import hud_controller
+            hud_controller.set_3d_model("helmet")
+            return True, "Projecting 3D Mark-85 Iron Man Wireframe Helmet on the holographic display, sir."
+
+        if any(p in clean_lower for p in ["switch to arc reactor", "show arc reactor", "3d arc reactor", "show reactor", "display reactor", "wireframe reactor", "project arc reactor"]):
+            from tools.hud_controller import hud_controller
+            hud_controller.set_3d_model("reactor")
+            return True, "Projecting 3D Arc Reactor Gyroscope on the holographic display, sir."
+
+        if any(p in clean_lower for p in ["show 3d globe", "show globe", "switch to globe", "cyber globe", "display globe", "wireframe globe", "project globe"]):
+            from tools.hud_controller import hud_controller
+            hud_controller.set_3d_model("globe")
+            return True, "Projecting 3D Cyber Earth Globe on the holographic display, sir."
+
+        if any(p in clean_lower for p in ["show tesseract", "3d tesseract", "switch to tesseract", "show hypercube", "display tesseract", "wireframe tesseract", "project tesseract"]):
+            from tools.hud_controller import hud_controller
+            hud_controller.set_3d_model("tesseract")
+            return True, "Projecting 4D Hypercube Tesseract on the holographic display, sir."
+
+        # Holographic 3D Model Rotation & View Manipulation
+        if any(p in clean_lower for p in ["reset 3d view", "reset helmet", "reset 3d model", "reset view", "recenter model"]):
+            from tools.hud_controller import hud_controller
+            hud_controller.reset_3d_view()
+            return True, "Holographic 3D model orientation and zoom reset to default center, sir."
+
+        if any(p in clean_lower for p in ["stop spinning", "pause spin", "halt spin", "freeze model"]):
+            from tools.hud_controller import hud_controller
+            hud_controller.toggle_auto_spin(False)
+            return True, "Holographic 3D wireframe rotation frozen, sir."
+
+        if any(p in clean_lower for p in ["spin model", "auto spin", "start spinning", "resume spin", "enable spin"]):
+            from tools.hud_controller import hud_controller
+            hud_controller.toggle_auto_spin(True)
+            return True, "Automated 3D holographic rotation resumed, sir."
+
+        if any(p in clean_lower for p in ["rotate helmet", "rotate 3d helmet", "rotate model", "rotate 3d model", "turn model", "spin helmet", "rotate wireframe"]):
+            from tools.hud_controller import hud_controller
+            hud_controller.rotate_model(delta_yaw=0.8, delta_pitch=0.0)
+            return True, "3D holographic wireframe model rotated on the tactical display, sir."
+
+        if any(p in clean_lower for p in ["cycle hud theme", "change hud palette", "holographic palette", "switch hud color", "cycle holographic theme"]):
+            from tools.hud_controller import hud_controller
+            hud_controller.cycle_palette()
+            return True, "Cycling holographic visual palette on the tactical display, sir."
+
         # Digital Marketing Suite - Master Campaign & Specialized Sub-Engines
         mkt_match = re.match(r"^(?:run|launch|generate|execute)\s+(?:a\s+)?digital\s+marketing(?:\s+campaign)?(?:\s+for|\s+in)?(.*)$", clean_lower)
         if mkt_match or any(p in clean_lower for p in ["run digital marketing", "launch digital marketing", "digital marketing campaign", "marketing suite"]):

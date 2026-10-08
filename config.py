@@ -48,6 +48,7 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 ASSETS_DIR = BASE_DIR / "assets"
 MEMORY_DIR = BASE_DIR / "memory"
 LOGS_DIR = BASE_DIR / "logs"
+DATA_DIR = BASE_DIR / "data"
 
 # Database Paths
 MEMORY_DB_PATH = MEMORY_DIR / "jarvis_memory.db"
