@@ -297,6 +297,61 @@ class LocalIntelligence:
             from core.canary_sandbox import canary_sandbox
             return True, canary_sandbox.format_immune_status_summary()
 
+        # Area 1: Autonomous Web & Market Intelligence (Supplier Prices & Tenders)
+        if any(p in clean_lower for p in ["track supplier prices", "supplier prices", "market material prices", "material prices", "raw material price"]):
+            from tools.browser_agent import browser_agent
+            p_data = browser_agent.track_supplier_material_prices()
+            return True, browser_agent.format_price_voice_summary(p_data)
+
+        if any(p in clean_lower for p in ["check government tenders", "scan tenders", "fire safety tenders", "public tenders", "tenders status"]):
+            from tools.browser_agent import browser_agent
+            t_data = browser_agent.scan_government_tenders()
+            return True, browser_agent.format_tender_voice_summary(t_data)
+
+        # Area 2: Business Workflow, Quotations & CRM Pipeline
+        quote_match = re.match(r"^(?:generate|create|draft)\s+(?:a\s+)?(?:quotation|quote|estimate)\s+(?:for\s+)?(.+)$", clean_lower)
+        if quote_match:
+            from tools.business_workflow_engine import business_workflow
+            c_name = quote_match.group(1).strip()
+            items = [{"item_code": "abc_6kg", "quantity": 10}, {"item_code": "co2_4.5kg", "quantity": 4}, {"item_code": "hydro_test", "quantity": 14}]
+            q_res = business_workflow.generate_quotation(c_name, items)
+            return True, f"Quotation {q_res['quotation_number']} generated for {c_name}, sir. Total amount is ₹{q_res['total_inr']:,.2f} inclusive of 18% GST. Record added to CRM."
+
+        if any(p in clean_lower for p in ["crm pipeline status", "pipeline status", "sales pipeline", "crm status", "pipeline summary"]):
+            from tools.business_workflow_engine import business_workflow
+            return True, business_workflow.format_crm_voice_summary()
+
+        # Area 3: Real-World Optical Vision & Camera Inspection
+        if any(p in clean_lower for p in ["inspect extinguisher camera", "inspect extinguisher", "camera inspection", "optical inspection", "check extinguisher"]):
+            from tools.optical_inspection_engine import optical_inspection
+            return True, optical_inspection.format_inspection_voice_summary()
+
+        if any(p in clean_lower for p in ["check pressure gauge", "inspect pressure gauge", "gauge status", "manometer status"]):
+            from tools.optical_inspection_engine import optical_inspection
+            g_res = optical_inspection.inspect_pressure_gauge()
+            return True, f"Manometer status is {g_res['status']} in the {g_res['pressure_zone']}, sir. {g_res['action_required']}"
+
+        # Area 4: Advanced Multi-Agent Workflow Mesh
+        agent_mesh_match = re.match(r"^(?:run\s+(?:multi\s+)?agent\s+mesh(?:\s+on|\s+for)?|execute\s+multi\s+agent\s+mission(?:\s+on|\s+for)?)(.*)$", clean_lower)
+        if agent_mesh_match or any(p in clean_lower for p in ["run agent mesh", "multi agent mission", "multi agent status", "agent mesh status"]):
+            from core.multi_agent_mesh import multi_agent_mesh
+            mission = agent_mesh_match.group(1).strip() if agent_mesh_match and agent_mesh_match.group(1) else "Comprehensive industrial safety audit and quotation"
+            if not mission:
+                mission = "Comprehensive industrial safety audit and quotation"
+            m_res = multi_agent_mesh.execute_mesh_mission(mission)
+            return True, m_res["synthesis"]
+
+        # Area 5: Holographic HUD & Next-Gen Interface Telemetry
+        if any(p in clean_lower for p in ["hud telemetry", "hud telemetry status", "holographic telemetry", "hud status"]):
+            from ui.hud_telemetry_matrix import hud_telemetry
+            return True, hud_telemetry.format_telemetry_voice_summary()
+
+        if any(p in clean_lower for p in ["play sound effect", "play sound fx", "target lock sound", "repulsor sound"]):
+            from ui.hud_telemetry_matrix import hud_telemetry
+            fx_type = "repulsor_charge" if "repulsor" in clean_lower else "target_lock"
+            hud_telemetry.play_tactical_sound_fx(fx_type)
+            return True, f"Tactical audio effect '{fx_type}' synthesized and played, sir."
+
         # ─────────────────────────────────────────────────────────────────────
         # 2. Application, Folder & Script Launching
         # ─────────────────────────────────────────────────────────────────────
