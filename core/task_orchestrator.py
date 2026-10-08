@@ -172,6 +172,10 @@ class TaskOrchestrator:
         Determines whether a directive involves multi-step reasoning, external web search, or file tool action.
         """
         lower = prompt.lower()
+        from core.conceptual_synthesizer import conceptual_synthesizer
+        if conceptual_synthesizer.is_conceptual_query(prompt):
+            return False
+
         if any(lower.startswith(p) for p in [
             "add pending task", "queue task", "create task", "add task",
             "what are my pending tasks", "show pending tasks", "list pending tasks",

@@ -12,8 +12,9 @@ class TestListenerConversation(unittest.TestCase):
         self.listener = VoiceListener()
 
     def test_default_pause_threshold(self):
-        # Must wait long enough for speech to conclude (>= 2.0s)
-        self.assertGreaterEqual(self.listener.pause_threshold, 2.0)
+        # Responsiveness optimization: pause_threshold calibrated for rapid conversational turn-taking (<= 1.0s)
+        self.assertLessEqual(self.listener.pause_threshold, 1.0)
+        self.assertGreaterEqual(self.listener.pause_threshold, 0.4)
         self.assertGreaterEqual(self.listener.phrase_time_limit, 30.0)
 
     def test_conversational_exit_words(self):

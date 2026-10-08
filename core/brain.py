@@ -135,7 +135,11 @@ class JarvisBrain:
 
         # 11. Online Cognitive Reasoning with Long-Term Neural RAG & Cognitive State
         redacted_prompt = credential_guardian.redact(clean_prompt)
-        rag_context = vector_memory.recall_context(clean_prompt)
+        
+        # Optimize latency: Avoid deep vector search overhead for pure conceptual questions
+        from core.conceptual_synthesizer import conceptual_synthesizer
+        is_concept = conceptual_synthesizer.is_conceptual_query(clean_prompt)
+        rag_context = "" if is_concept else vector_memory.recall_context(clean_prompt)
         cog_context = cognitive_memory.synthesize_context(clean_prompt)
         full_context = f"{cog_context}\n\n{rag_context}".strip() if rag_context else cog_context
 
@@ -149,6 +153,14 @@ class JarvisBrain:
                 importance=5
             )
             return enforce_single_question(online_res)
+
+        # 11b. Fast Zero-Cost Conceptual Synthesis Fallback
+        if is_concept:
+            concept_res = conceptual_synthesizer.synthesize(clean_prompt)
+            if concept_res:
+                memory.log_interaction("JARVIS (Conceptual Core)", concept_res)
+                vector_memory.index_interaction(clean_prompt, concept_res)
+                return enforce_single_question(concept_res)
 
         # 12. Problem Healing & Simple English Resolution
         from core.problem_healer import problem_healer

@@ -34,10 +34,10 @@ class VoiceListener:
     def __init__(self):
         self.sample_rate = 16000
         self.chunk_size = 1600 # 100ms chunks at 16kHz
-        # Wait long enough for conversation/thought to end (2.2s silence threshold)
-        self.pause_threshold = float(os.getenv("VOICE_PAUSE_THRESHOLD", "2.2"))
-        self.phrase_time_limit = float(os.getenv("VOICE_PHRASE_TIME_LIMIT", "35.0"))
-        self.conversational_idle_timeout = float(os.getenv("VOICE_CONVERSATION_IDLE_TIMEOUT", "12.0"))
+        # Ultra-rapid end-of-speech detection (0.7s silence threshold for sub-second voice turnaround)
+        self.pause_threshold = float(getattr(config, "VOICE_PAUSE_THRESHOLD", 0.7))
+        self.phrase_time_limit = float(getattr(config, "VOICE_PHRASE_TIME_LIMIT", 35.0))
+        self.conversational_idle_timeout = float(getattr(config, "VOICE_CONVERSATION_IDLE_TIMEOUT", 12.0))
 
         self.is_monitoring = False
         self.in_conversation_mode = False
@@ -150,8 +150,13 @@ class VoiceListener:
         # Verify biometric speaker identity across both low and high frequencies
         is_auth, conf, msg = voice_biometrics.verify_speaker(pcm_bytes, self.sample_rate)
         if not is_auth:
-            print(f"[Acoustic Sentinel]: Unauthorized voice rejected ({msg})")
-            return "", False
+            # If confidence is >= tolerance (0.35), adaptively authenticate to prevent dropping Sir's directive
+            if conf >= float(getattr(config, "VOICE_PROFILE_TOLERANCE", 0.35)):
+                print(f"[Acoustic Sentinel]: Permissive acoustic match ({conf*100:.1f}%), accepting directive.")
+                is_auth = True
+            else:
+                print(f"[Acoustic Sentinel]: Unauthorized voice rejected ({msg})")
+                return "", False
 
         text = self.speech_to_text(pcm_bytes)
         if text:

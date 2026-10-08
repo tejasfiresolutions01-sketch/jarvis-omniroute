@@ -20,11 +20,11 @@ TTS_RATE = os.getenv("TTS_RATE", "+0%")
 TTS_PITCH = os.getenv("TTS_PITCH", "+0Hz")
 
 # Voice Conversation & Biometric Settings
-VOICE_PAUSE_THRESHOLD = float(os.getenv("VOICE_PAUSE_THRESHOLD", "2.2")) # Seconds of silence before concluding utterance
+VOICE_PAUSE_THRESHOLD = float(os.getenv("VOICE_PAUSE_THRESHOLD", "0.7")) # Seconds of silence before concluding utterance (rapid response)
 VOICE_PHRASE_TIME_LIMIT = float(os.getenv("VOICE_PHRASE_TIME_LIMIT", "35.0"))
 VOICE_CONVERSATION_IDLE_TIMEOUT = float(os.getenv("VOICE_CONVERSATION_IDLE_TIMEOUT", "12.0"))
 VOICE_VERIFICATION_ENABLED = os.getenv("VOICE_VERIFICATION_ENABLED", "true").lower() in ("true", "1", "yes")
-VOICE_PROFILE_TOLERANCE = float(os.getenv("VOICE_PROFILE_TOLERANCE", "0.50"))
+VOICE_PROFILE_TOLERANCE = float(os.getenv("VOICE_PROFILE_TOLERANCE", "0.35")) # Permissive adaptive tolerance
 FORCE_OFFLINE_STT = os.getenv("FORCE_OFFLINE_STT", "false").lower() in ("true", "1", "yes")
 
 # Proactive Butler & Protocol Sunrise Settings
@@ -35,12 +35,14 @@ SUNRISE_TIME = os.getenv("SUNRISE_TIME", "08:00")
 WEB_PORTAL_PORT = int(os.getenv("WEB_PORTAL_PORT", "5050"))
 OMNIROUTE_PORT = int(os.getenv("OMNIROUTE_PORT", "20128"))
 OMNIROUTE_BASE_URL = os.getenv("OMNIROUTE_BASE_URL", f"http://localhost:{OMNIROUTE_PORT}/v1")
-OMNIROUTE_MODEL = os.getenv("OMNIROUTE_MODEL", "ddgw/mistral-small-2603")
+OMNIROUTE_MODEL = os.getenv("OMNIROUTE_MODEL", "auto/best-fast")
 
 # API Keys
 OMNIROUTE_API_KEY = os.getenv("OMNIROUTE_API_KEY", "")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 
 # Directory Paths
 ASSETS_DIR = BASE_DIR / "assets"

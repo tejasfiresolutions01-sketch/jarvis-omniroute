@@ -717,20 +717,20 @@ class LocalIntelligence:
             greeting = "Good morning" if hour < 12 else ("Good afternoon" if hour < 18 else "Good evening")
             return True, f"{greeting}, sir. J.A.R.V.I.S. is fully operational and at your service. How may I assist you?"
 
-        if any(clean_lower == p for p in ["who are you", "what are you", "identify yourself"]):
+        if any(p in clean_lower for p in ["who are you", "what are you", "identify yourself", "what is your purpose", "what's your purpose", "what do you do", "tell me about yourself"]):
             return True, (
                 "I am J.A.R.V.I.S. — Just A Rather Very Intelligent System. "
                 "I serve as your personal butler, managing your schedule, monitoring your hardware, "
                 "and executing system directives both offline and online with absolute precision."
             )
 
-        if any(clean_lower == p for p in ["how are you", "how are you doing", "how's your day", "how is your day"]):
+        if any(p in clean_lower for p in ["how are you", "how are you doing", "how's your day", "how is your day", "how goes it"]):
             return True, "Performing splendidly, sir. All core matrices are calibrated and standing ready for your command. How fares your day?"
 
-        if any(clean_lower == p for p in ["status report", "are you ready", "systems check"]):
+        if any(p in clean_lower for p in ["status report", "are you ready", "systems check", "all systems go"]):
             return True, "All internal subroutines are performing at peak efficiency, sir. Ready for your directive."
 
-        if any(clean_lower == p for p in ["thank you", "thanks", "thank you jarvis", "thanks jarvis"]):
+        if any(p in clean_lower for p in ["thank you", "thanks", "thank you jarvis", "thanks jarvis"]):
             return True, "Always an honor, sir. Standing ready whenever you require assistance."
 
         # ─────────────────────────────────────────────────────────────────────
