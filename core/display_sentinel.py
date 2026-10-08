@@ -27,7 +27,7 @@ class DisplaySentinel:
     """
 
     IDLE_THRESHOLD_SECONDS = 90.0  # Time away considered standby/display sleep
-    GREETING_COOLDOWN_SECONDS = 120.0 # Prevent redundant greetings
+    GREETING_COOLDOWN_SECONDS = 300.0 # Prevent redundant greetings
 
     def __init__(self):
         self._thread: Optional[threading.Thread] = None
@@ -94,9 +94,6 @@ class DisplaySentinel:
             return
 
         self._last_greeting_time = now
-        greeting_text = self.generate_display_greeting()
-        print(f"[Display Sentinel]: Display active ({reason}). Vocalizing greeting: '{greeting_text}'")
-        speak(greeting_text)
 
         # Autonomous Holographic Tactical Interface Display
         try:
@@ -104,6 +101,14 @@ class DisplaySentinel:
             hologram_sentinel.display_hologram(reason=f"device_on_{reason}")
         except Exception:
             pass
+
+        from core.voice import check_is_speaking
+        if check_is_speaking():
+            return
+
+        greeting_text = self.generate_display_greeting()
+        print(f"[Display Sentinel]: Display active ({reason}). Vocalizing greeting: '{greeting_text}'")
+        speak(greeting_text)
 
     def _monitor_loop(self):
         """Background daemon polling user presence and display status."""

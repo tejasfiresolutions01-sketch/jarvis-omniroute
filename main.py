@@ -81,6 +81,9 @@ def run_cli():
 
     speak("J.A.R.V.I.S. is online, sir. Standing ready for your directive or schedule inquiry.")
 
+    # Stop background wake daemon so it doesn't compete for the microphone
+    listener.stop_wake_word_daemon()
+
     while True:
         try:
             user_input = listener.listen(prompt="Directive, sir (or 'what is my schedule?'): ")
@@ -207,8 +210,11 @@ def main():
             from ui.hud import launch_hud
             launch_hud()
         except Exception as e:
-            print(f"[Display Server Notice]: Falling back to CLI mode ({e})...")
-            run_cli()
+            print(f"[Display Server Notice]: Running in background matrix ({e})...")
+            try:
+                threading.Event().wait()
+            except KeyboardInterrupt:
+                print("\nStanding down.")
 
 if __name__ == "__main__":
     try:

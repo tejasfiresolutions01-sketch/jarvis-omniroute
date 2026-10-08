@@ -1,14 +1,25 @@
 import os
+import sys
+import time
+import queue
+import re
 import asyncio
 import tempfile
 import threading
-from typing import Optional
+from typing import Optional, Dict
 from pathlib import Path
 import config
 
 _speak_lock = threading.Lock()
 _current_process = None
 is_speaking = False
+
+# Deduplication and single-voice tracking
+_recent_spoken: Dict[str, float] = {}
+_DEDUP_WINDOW_SECONDS = 4.5
+_last_spoken_text: str = ""
+_speech_queue: queue.Queue = queue.Queue(maxsize=16)
+_worker_running = False
 
 def check_is_speaking() -> bool:
     """Returns True if J.A.R.V.I.S. is currently producing acoustic speech."""
@@ -26,7 +37,25 @@ def stop_speaking():
         pass
     is_speaking = False
 
-import re
+def is_recently_spoken(text: str, window: float = 6.0) -> bool:
+    """
+    Checks if given text matches anything recently vocalized by J.A.R.V.I.S.
+    Used for acoustic echo cancellation to prevent microphone feedback loops.
+    """
+    global _last_spoken_text
+    if not text or not text.strip():
+        return False
+    clean_q = re.sub(r"[^a-zA-Z0-9\s]", "", text.lower()).strip()
+    if not clean_q:
+        return False
+
+    now = time.time()
+    # Check exact normalized cache
+    for phrase, ts in list(_recent_spoken.items()):
+        if now - ts <= window:
+            if clean_q in phrase or phrase in clean_q:
+                return True
+    return False
 
 def clean_for_speech(text: str) -> str:
     """
@@ -104,86 +133,183 @@ def clean_for_speech(text: str) -> str:
 
     return s
 
+def _get_os_speech_lock() -> Optional[Any]:
+    """Cross-process lock to guarantee only ONE process speaks across Windows."""
+    try:
+        lock_file = Path(config.BASE_DIR) / "logs" / "jarvis_speech.lock"
+        lock_file.parent.mkdir(parents=True, exist_ok=True)
+        f = open(lock_file, "a+")
+        return f
+    except Exception:
+        return None
+
+def _release_os_speech_lock(lock_handle):
+    try:
+        if lock_handle:
+            lock_handle.close()
+    except Exception:
+        pass
+
+def _process_speech_queue():
+    """Single serialized speech worker ensuring exactly ONE voice speaks at any time."""
+    global _worker_running
+    while True:
+        try:
+            item = _speech_queue.get()
+            if item is None:
+                break
+            text, sync_event = item
+            _speak_worker(text)
+            if sync_event:
+                sync_event.set()
+            _speech_queue.task_done()
+        except Exception as e:
+            time.sleep(0.1)
+
+def _ensure_worker_started():
+    global _worker_running
+    with _speak_lock:
+        if not _worker_running:
+            _worker_running = True
+            t = threading.Thread(target=_process_speech_queue, daemon=True, name="JarvisSingleVoiceWorker")
+            t.start()
+
 def speak(text: str):
     """
     Synthesizes speech using British Butler persona asynchronously.
-    Uses edge-tts (en-GB-RyanNeural) when online, with instant offline fallback
-    to Windows native SAPI5 (pyttsx3) so voice always functions offline!
-    Supports acoustic barge-in / interruption.
+    Enforces strict single-voice output:
+    - Automatically deduplicates and suppresses repeated vocalizations within 4.5 seconds.
+    - Serializes all speech into a single worker thread to prevent overlapping or 3x voices.
+    - Supports acoustic barge-in / interruption.
     """
     if not text or not text.strip():
         return
 
     clean_text = text.strip()
-    threading.Thread(target=_speak_worker, args=(clean_text,), daemon=True).start()
+    spoken_text = clean_for_speech(clean_text)
+    if not spoken_text:
+        return
+
+    # 1. Deduplication Gate: reject identical phrases spoken within 4.5 seconds
+    norm_key = re.sub(r"[^a-zA-Z0-9\s]", "", spoken_text.lower()).strip()
+    now = time.time()
+    
+    with _speak_lock:
+        # Prune old keys
+        for k in list(_recent_spoken.keys()):
+            if now - _recent_spoken[k] > 15.0:
+                del _recent_spoken[k]
+
+        if norm_key in _recent_spoken and (now - _recent_spoken[norm_key] < _DEDUP_WINDOW_SECONDS):
+            return
+
+        _recent_spoken[norm_key] = now
+
+    # 2. If a new utterance arrives while previous is speaking, interrupt the old one
+    if is_speaking:
+        stop_speaking()
+
+    # 3. Clear pending redundant items from queue
+    while not _speech_queue.empty():
+        try:
+            _speech_queue.get_nowait()
+            _speech_queue.task_done()
+        except Exception:
+            break
+
+    _ensure_worker_started()
+    try:
+        _speech_queue.put_nowait((clean_text, None))
+    except queue.Full:
+        pass
 
 def speak_sync(text: str):
     """Synchronous speech synthesis; blocks until playback completes or barged-in."""
     if not text or not text.strip():
         return
-    _speak_worker(text.strip())
+
+    clean_text = text.strip()
+    spoken_text = clean_for_speech(clean_text)
+    if not spoken_text:
+        return
+
+    norm_key = re.sub(r"[^a-zA-Z0-9\s]", "", spoken_text.lower()).strip()
+    now = time.time()
+    with _speak_lock:
+        if norm_key in _recent_spoken and (now - _recent_spoken[norm_key] < _DEDUP_WINDOW_SECONDS):
+            return
+        _recent_spoken[norm_key] = now
+
+    _speak_worker(clean_text)
 
 def _speak_worker(text: str):
-    global is_speaking
+    global is_speaking, _last_spoken_text
     spoken_text = clean_for_speech(text)
     if not spoken_text:
         return
 
-    with _speak_lock:
-        is_speaking = True
-        # 1. Try edge-tts (High Fidelity British Butler)
-        try:
-            import edge_tts
-            import pygame
+    lock_handle = _get_os_speech_lock()
+    try:
+        with _speak_lock:
+            is_speaking = True
+            _last_spoken_text = spoken_text
 
-            async def _synthesize():
-                communicate = edge_tts.Communicate(
-                    text=spoken_text,
-                    voice=config.TTS_VOICE,
-                    rate=config.TTS_RATE,
-                    pitch=config.TTS_PITCH
-                )
-                with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
-                    temp_path = f.name
-                await communicate.save(temp_path)
-                return temp_path
-
-            temp_audio = asyncio.run(_synthesize())
-
-            # Play with pygame
-            if not pygame.mixer.get_init():
-                pygame.mixer.init()
-            pygame.mixer.music.load(temp_audio)
-            pygame.mixer.music.play()
-            while pygame.mixer.music.get_busy() and is_speaking:
-                pygame.time.Clock().tick(10)
-            pygame.mixer.music.unload()
+            # 1. Try edge-tts (High Fidelity British Butler)
             try:
-                os.remove(temp_audio)
+                import edge_tts
+                import pygame
+
+                async def _synthesize():
+                    communicate = edge_tts.Communicate(
+                        text=spoken_text,
+                        voice=config.TTS_VOICE,
+                        rate=config.TTS_RATE,
+                        pitch=config.TTS_PITCH
+                    )
+                    with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
+                        temp_path = f.name
+                    await communicate.save(temp_path)
+                    return temp_path
+
+                temp_audio = asyncio.run(_synthesize())
+
+                # Play with pygame
+                if not pygame.mixer.get_init():
+                    pygame.mixer.init()
+                pygame.mixer.music.load(temp_audio)
+                pygame.mixer.music.play()
+                while pygame.mixer.music.get_busy() and is_speaking:
+                    pygame.time.Clock().tick(10)
+                pygame.mixer.music.unload()
+                try:
+                    os.remove(temp_audio)
+                except Exception:
+                    pass
+                is_speaking = False
+                return
             except Exception:
                 pass
-            is_speaking = False
-            return
-        except Exception:
-            pass
 
-        # 2. Offline Fallback: Windows SAPI5 (pyttsx3)
-        try:
-            import pyttsx3
-            engine = pyttsx3.init()
-            engine.setProperty('rate', 175)
-            voices = engine.getProperty('voices')
-            for v in voices:
-                if any(k in v.name.lower() for k in ["george", "uk", "british", "english"]):
-                    engine.setProperty('voice', v.id)
-                    break
-            engine.say(text)
-            engine.runAndWait()
-            is_speaking = False
-            return
-        except Exception:
-            pass
+            # 2. Offline Fallback: Windows SAPI5 (pyttsx3)
+            try:
+                import pyttsx3
+                engine = pyttsx3.init()
+                engine.setProperty('rate', 175)
+                voices = engine.getProperty('voices')
+                for v in voices:
+                    if any(k in v.name.lower() for k in ["george", "uk", "british", "english"]):
+                        engine.setProperty('voice', v.id)
+                        break
+                engine.say(spoken_text)
+                engine.runAndWait()
+                is_speaking = False
+                return
+            except Exception:
+                pass
 
-        # 3. Terminal fallback
-        print(f"\n[J.A.R.V.I.S.]: {text}\n")
+            # 3. Terminal fallback
+            print(f"\n[J.A.R.V.I.S.]: {spoken_text}\n")
+            is_speaking = False
+    finally:
         is_speaking = False
+        _release_os_speech_lock(lock_handle)

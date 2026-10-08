@@ -41,6 +41,8 @@ class HologramSentinel:
         self._last_manual_summon_time = 0.0
         self._app_focus_streak = 0
         self._tracked_windows: Dict[int, Tuple[str, float]] = {}  # hwnd -> (title, first_seen_timestamp)
+        self._hud_proc: Optional[subprocess.Popen] = None
+        self._last_spawn_time = 0.0
         self.always_on = getattr(config, "HUD_ALWAYS_ON", True)
         self.user32 = ctypes.windll.user32
         self.kernel32 = ctypes.windll.kernel32
@@ -128,10 +130,23 @@ class HologramSentinel:
             except Exception as e:
                 print(f"[Holographic Sentinel Warning]: Error elevating HUD window: {e}")
 
+        # In headless or non-GUI mode, do not spawn GUI processes
+        if "--headless" in sys.argv:
+            return False
+
+        # If HUD process is already spawned and active, avoid creating duplicates
+        if self._hud_proc is not None and self._hud_proc.poll() is None:
+            return True
+
+        # Throttle process spawning to avoid memory/paging file exhaustion
+        if now - self._last_spawn_time < 25.0:
+            return False
+
         # If not running or window could not be found, spawn HUD process
         try:
+            self._last_spawn_time = now
             hud_script = str(config.BASE_DIR / "ui" / "hud.py")
-            subprocess.Popen(
+            self._hud_proc = subprocess.Popen(
                 [sys.executable, hud_script],
                 cwd=str(config.BASE_DIR),
                 creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
@@ -246,7 +261,7 @@ class HologramSentinel:
 
                 # Always-On Mode: User requested holographic interface run all time on screen
                 if self.always_on:
-                    if not self.is_hologram_visible():
+                    if not self.is_hologram_visible() and (now - self._last_trigger_time >= 10.0):
                         self.display_hologram(reason="always_on_persistence")
                     continue
 

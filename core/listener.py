@@ -142,6 +142,11 @@ class VoiceListener:
         Captures audio, verifies the user's voice biometrics (low & high frequency),
         and returns (transcribed_text, is_authorized).
         """
+        import core.voice as voice
+        while voice.check_is_speaking():
+            time.sleep(0.1)
+        time.sleep(0.25)  # Acoustic echo buffer to prevent speaker feedback
+
         play_wake_chime()
         pcm_bytes = self.record_audio_utterance(timeout=timeout, prompt_text=prompt)
         if not pcm_bytes:
@@ -160,6 +165,11 @@ class VoiceListener:
 
         text = self.speech_to_text(pcm_bytes)
         if text:
+            # Acoustic Echo Suppression: Discard if recognized text matches Jarvis's recent vocalization
+            if voice.is_recently_spoken(text):
+                print(f"[Acoustic Sentinel]: Echo suppression discarded self-reflection: '{text}'")
+                return "", False
+
             play_ack_chime()
             print(f"[Captured Voice]: {text}")
             return text, True
@@ -265,9 +275,7 @@ class VoiceListener:
             text, is_auth = self.capture_and_authenticate(timeout=8.0, prompt="Directive, sir: ")
             if text and is_auth:
                 cb = getattr(self, "_callback", callback)
-                keep = cb(text)
-                if keep:
-                    self.start_conversation_session(cb)
+                cb(text)
             wake_word_engine.resume()
 
         if wake_word_engine.is_available:
@@ -307,8 +315,6 @@ class VoiceListener:
                             cmd = re.sub(rf"^.*?\b{w}\b[,\s]*", "", phrase).strip()
                             if cmd:
                                 callback(cmd)
-                            # After wake word interaction, engage conversation mode
-                            self.start_conversation_session(callback)
                             break
 
                 except Exception:
