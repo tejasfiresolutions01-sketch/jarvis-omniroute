@@ -133,7 +133,12 @@ class JarvisBrain:
             )
             return enforce_single_question(local_res)
 
-        # 11. Online Cognitive Reasoning with Long-Term Neural RAG & Cognitive State
+        # 11. Opportunistic Online Cognitive Reasoning
+        from core.internet_sentinel import internet_sentinel
+        # Connect with internet whenever possible
+        if not internet_sentinel.is_connected():
+            internet_sentinel.check_connectivity(timeout=0.8)
+
         redacted_prompt = credential_guardian.redact(clean_prompt)
         
         # Optimize latency: Avoid deep vector search overhead for pure conceptual questions
@@ -178,6 +183,11 @@ class JarvisBrain:
         )
 
         if rectified:
+            retry_res = online_intelligence.query(redacted_prompt, context=full_context)
+            if retry_res:
+                memory.log_interaction("JARVIS (Online Core)", retry_res)
+                vector_memory.index_interaction(clean_prompt, retry_res)
+                return enforce_single_question(retry_res)
             repaired_msg = "I have restored our network connection, sir. How may I be of service?"
             return enforce_single_question(repaired_msg)
 

@@ -476,41 +476,48 @@ class LocalIntelligence:
             return True, omniroute_controller.get_butler_summary()
 
         # ─────────────────────────────────────────────────────────────────────
-        # 5b-2. Network & Connection Gateway Repair / Reconnection
+        # 5b-2. Internet Connection Sensing & Reconnection
         # ─────────────────────────────────────────────────────────────────────
         if any(p in clean_lower for p in [
-            "repair it", "fix it", "repair network", "fix network", "repair the network",
-            "fix the network", "repair connection", "fix connection", "repair the connection",
-            "fix the connection", "reconnect network", "reconnect gateway", "restart gateway",
-            "repair gateway", "reconnect", "fix internet", "repair internet", "network repair",
-            "connection repair", "troubleshoot connection", "troubleshoot network"
-        ]) or clean_lower in ["repair", "reconnect", "fix"]:
-            from core.problem_healer import problem_healer
-            import urllib.request
-            # Execute automated repair routine
-            rectified, explanation = problem_healer.handle_problem(
-                problem_type="network",
-                details="Manual user directive to repair connection gateway.",
-                notify_if_unrectified=False
-            )
-            # Verify internet reachability
-            is_online = False
-            try:
-                urllib.request.urlopen("https://www.google.com", timeout=3.0)
-                is_online = True
-            except Exception:
-                pass
-
-            if is_online:
+            "connect to internet", "connect to the internet", "connect internet",
+            "reconnect to internet", "reconnect internet", "check internet",
+            "internet status", "are we connected to internet", "are we connected",
+            "are you connected to internet", "are you connected", "check network status",
+            "network status", "connection status", "is internet working", "is internet active"
+        ]):
+            from core.internet_sentinel import internet_sentinel
+            is_up, msg = internet_sentinel.reconnect()
+            if is_up:
                 return True, (
-                    "I have re-initialized the local connection gateway and verified our network status, sir. "
-                    "Internet connectivity is operational and all internal subroutines are fully synchronized."
+                    "Internet connectivity is operational, sir. We are linked to the global network "
+                    "and all online neural pathways and cloud capabilities are fully synchronized."
                 )
             else:
                 return True, (
-                    "I have restarted our connection gateway, but your workstation cannot reach the internet right now, sir. "
-                    "Please check your Wi-Fi or router connection."
+                    "I have attempted to re-establish our connection, sir, but external networks remain unreachable. "
+                    "Please verify your Wi-Fi or router connection."
                 )
+
+        # ─────────────────────────────────────────────────────────────────────
+        # 5b-3. Autonomous Self-Repair & Full Subsystem Healing
+        # ─────────────────────────────────────────────────────────────────────
+        if any(p in clean_lower for p in [
+            "repair yourself", "fix yourself", "self repair", "run self repair",
+            "heal yourself", "repair jarvis", "fix jarvis", "diagnose and repair",
+            "check and repair", "system self repair", "repair all systems",
+            "repair everything", "repair it", "fix it", "repair network", "fix network",
+            "repair the network", "fix the network", "repair connection", "fix connection",
+            "repair the connection", "fix the connection", "reconnect network",
+            "reconnect gateway", "restart gateway", "repair gateway", "reconnect",
+            "fix internet", "repair internet", "network repair", "connection repair",
+            "troubleshoot connection", "troubleshoot network"
+        ]) or clean_lower in ["repair", "reconnect", "fix", "self-repair"]:
+            from core.self_repair import self_repair_engine
+            res = self_repair_engine.run_full_repair(manual=True)
+            return True, res.get(
+                "spoken_response",
+                "I have conducted a full self-repair routine across all subsystems, sir. All internal subroutines are in prime operational health."
+            )
 
         # ─────────────────────────────────────────────────────────────────────
         # 5c. Local LAN Perimeter & IoT Reconnaissance

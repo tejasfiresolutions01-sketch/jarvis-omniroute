@@ -64,26 +64,11 @@ class ProblemHealer:
     def _heal_network_gateway(self, details: str) -> Tuple[bool, str]:
         """Attempts to restart or verify the OmniRoute gateway and connectivity."""
         try:
-            from tools.omniroute_controller import omniroute_controller
-            status = omniroute_controller.get_status()
-
-            if not status.get("online"):
-                logger.info("[Problem Healer]: OmniRoute gateway offline. Attempting silent launch...")
-                omniroute_controller.start_service_detached()
-                time.sleep(2.0)
-                new_status = omniroute_controller.get_status()
-                if new_status.get("online"):
-                    logger.info("[Problem Healer]: Gateway restored successfully. Problem resolved silently.")
-                    return True, "Network gateway was offline but has been successfully restarted."
-
-            # Test internet reachability via simple ping
-            import urllib.request
-            try:
-                urllib.request.urlopen("https://www.google.com", timeout=3.0)
+            from core.internet_sentinel import internet_sentinel
+            is_up, msg = internet_sentinel.reconnect()
+            if is_up:
                 return True, "Internet connectivity is verified and operational."
-            except Exception:
-                logger.warning("[Problem Healer]: Internet connectivity check failed.")
-                return False, "I cannot connect to the internet right now, sir. Please check your network connection."
+            return False, "I cannot connect to the internet right now, sir. Please check your network connection."
         except Exception as e:
             logger.error(f"[Problem Healer]: Network healing encountered error: {e}")
             return False, "I cannot connect to the internet right now, sir. Please check your network connection."

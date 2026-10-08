@@ -188,6 +188,20 @@ def main():
     except Exception:
         pass
 
+    # 13. Start Opportunistic Internet Connectivity Sentinel
+    try:
+        from core.internet_sentinel import internet_sentinel
+        internet_sentinel.start()
+    except Exception:
+        pass
+
+    # 14. Start Autonomous Self-Repair & Healing Engine
+    try:
+        from core.self_repair import self_repair_engine
+        self_repair_engine.start()
+    except Exception:
+        pass
+
     parser = argparse.ArgumentParser(description="J.A.R.V.I.S. Artificial Intelligence System")
     parser.add_argument("--cli", action="store_true", help="Launch in Interactive Command Line mode")
     parser.add_argument("--voice", action="store_true", help="Launch in Hands-Free Continuous Voice Conversation mode")
