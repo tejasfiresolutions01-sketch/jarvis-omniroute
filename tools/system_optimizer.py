@@ -139,5 +139,18 @@ class SystemOptimizer:
             f"System RAM utilization is now holding steady at {curr_pct}%."
         )
 
+    def optimize_system(self) -> Dict[str, Any]:
+        """Executes system memory and cache optimization returning structured metrics."""
+        mem_res = self.flush_memory()
+        temp_res = self.clean_temp_cache(max_age_hours=2.0)
+        return {
+            "status": "success",
+            "memory_reclaimed_mb": mem_res["ram_freed_mb"],
+            "space_freed_mb": temp_res["space_freed_mb"],
+            "files_deleted": temp_res["files_deleted"],
+            "percent_after": mem_res["percent_after"]
+        }
+
 # Global singleton
 system_optimizer = SystemOptimizer()
+

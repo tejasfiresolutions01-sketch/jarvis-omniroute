@@ -172,6 +172,19 @@ def main():
     except Exception:
         pass
 
+    # 12. Start Monthly Business Scanner & 3rd-Night Evolution Sentinel
+    try:
+        from core.business_scanner import business_scanner
+        threading.Thread(target=business_scanner.run_monthly_check, daemon=True).start()
+    except Exception:
+        pass
+
+    try:
+        from core.self_evolver import self_evolver
+        threading.Thread(target=self_evolver.run_nightly_check, daemon=True).start()
+    except Exception:
+        pass
+
     parser = argparse.ArgumentParser(description="J.A.R.V.I.S. Artificial Intelligence System")
     parser.add_argument("--cli", action="store_true", help="Launch in Interactive Command Line mode")
     parser.add_argument("--voice", action="store_true", help="Launch in Hands-Free Continuous Voice Conversation mode")

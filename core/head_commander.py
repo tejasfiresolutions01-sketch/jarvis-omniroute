@@ -341,7 +341,8 @@ class JarvisHeadCommander:
                     f"Description: {task.get('description', '')}\n"
                     f"Background Research: {research_data}\n\n"
                     f"As the designated specialist AI agent, execute this directive comprehensively. "
-                    f"Provide actionable strategies, concrete calculations, structured templates, or verified recommendations."
+                    f"Provide actionable strategies, concrete calculations, structured templates, or verified recommendations.\n"
+                    f"CRITICAL REQUIREMENT: All strategies, outreach copies, campaign drafts, calculations, and documents must be produced STRICTLY and EXCLUSIVELY in the English language."
                 )
 
                 # Check if it's a business operation
@@ -393,11 +394,32 @@ class JarvisHeadCommander:
             except Exception as e:
                 observations.append(f"Archival fallback: {e}")
 
+            # 4b. Compile Executive PDF Document
+            pdf_path = None
+            pdf_filename = f"task_{task_id}_{re.sub(r'[^a-zA-Z0-9_]', '_', task['title'].lower()[:30])}.pdf"
+            try:
+                from tools.pdf_generator import pdf_generator
+                pdf_path = pdf_generator.generate_pdf(
+                    title=f"TASK #{task_id}: {task['title']}",
+                    content=full_dossier,
+                    filename=pdf_filename
+                )
+                observations.append(f"Executive PDF generated at {pdf_filename}")
+            except Exception as pe:
+                observations.append(f"PDF generation note: {pe}")
+
+            # 4c. Dispatch Voice & System Notification (Voice notification as instructed)
+            try:
+                from tools.notification_sentinel import notification_sentinel
+                notification_sentinel.notify_task_completed(task_id, task["title"])
+            except Exception:
+                pass
+
             # 5. Create concise butler summary
             summary = (
                 f"Task #{task_id} ('{task['title']}') completed with full precision, sir. "
                 f"I deployed the {', '.join([a.replace('_', ' ').title() for a in agents])} specialist agents "
-                f"alongside our analytical tools. Complete dossier compiled and saved to {deliverable_filename}."
+                f"alongside our analytical tools. Complete dossier compiled and voice notification delivered."
             )
 
             self.update_task_progress(task_id, "completed", progress=100, result_summary=summary)

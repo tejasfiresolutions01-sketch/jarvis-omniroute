@@ -81,6 +81,7 @@ class TestHologramSentinel(unittest.TestCase):
     @patch.object(HologramSentinel, "get_hud_hwnd", return_value=99999)
     def test_hide_hologram(self, mock_hwnd):
         """Verifies hiding the HUD into stealth mode."""
+        self.sentinel.always_on = False
         self.sentinel.user32.ShowWindow = MagicMock()
         success = self.sentinel.hide_hologram()
         self.assertTrue(success)

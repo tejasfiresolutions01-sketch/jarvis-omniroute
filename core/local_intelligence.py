@@ -114,6 +114,86 @@ class LocalIntelligence:
             )
 
         # ─────────────────────────────────────────────────────────────────────
+        # 1c. Holographic Interface Always-On Controls
+        # ─────────────────────────────────────────────────────────────────────
+        if any(p in clean_lower for p in ["run holographic interface all time", "run hologram all time", "hologram always on", "holographic always on", "keep hologram on screen", "pin hologram", "pin holographic"]):
+            from core.hologram_sentinel import hologram_sentinel
+            return True, hologram_sentinel.set_always_on(True)
+
+        if any(p in clean_lower for p in ["hologram adaptive mode", "unpin hologram", "hologram background mode", "restore adaptive hologram"]):
+            from core.hologram_sentinel import hologram_sentinel
+            return True, hologram_sentinel.set_always_on(False)
+
+        # ─────────────────────────────────────────────────────────────────────
+        # 1d. Google Ecosystem Directives (Maps, Gmail, Search Engine)
+        # ─────────────────────────────────────────────────────────────────────
+        from tools.google_services import google_services
+
+        # Gmail Open / Compose
+        if clean_lower in ["open gmail", "check gmail", "launch gmail", "go to gmail", "gmail"]:
+            return True, google_services.open_gmail()
+
+        gmail_compose_match = re.match(r"^(?:compose|send|write)\s+(?:an?\s+)?(?:email|mail|gmail)(?:\s+to\s+(.+?))?(?:\s+about\s+(.+))?$", clean_lower)
+        if gmail_compose_match:
+            to_addr = gmail_compose_match.group(1) or ""
+            subject_or_topic = gmail_compose_match.group(2) or ""
+            return True, google_services.compose_email(to=to_addr.strip(), subject=subject_or_topic.strip())
+
+        # Google Maps
+        if clean_lower in ["open google maps", "open maps", "launch maps", "google maps"]:
+            return True, google_services.search_maps("", open_browser=True)
+
+        maps_dir_match = re.match(r"^(?:get\s+directions|directions|navigate|route)\s+(?:from\s+(.+?)\s+to\s+(.+)|to\s+(.+))$", clean_lower)
+        if maps_dir_match:
+            if maps_dir_match.group(1) and maps_dir_match.group(2):
+                orig = maps_dir_match.group(1).strip()
+                dest = maps_dir_match.group(2).strip()
+                return True, google_services.get_directions(origin=orig, destination=dest)
+            elif maps_dir_match.group(3):
+                dest = maps_dir_match.group(3).strip()
+                return True, google_services.search_maps(dest)
+
+        maps_search_match = re.match(r"^(?:search\s+(?:google\s+)?maps\s+(?:for\s+)?|maps\s+(?:search\s+)?)(.+)$", clean_lower)
+        if maps_search_match:
+            m_target = maps_search_match.group(1).strip()
+            return True, google_services.search_maps(m_target)
+
+        # Google Search Engine
+        google_search_match = re.match(r"^(?:search\s+google\s+(?:for\s+)?|google\s+(?:search\s+)?|google\s+)(.+)$", clean_lower)
+        if google_search_match:
+            g_target = google_search_match.group(1).strip()
+            if not any(g_target.startswith(w) for w in ["drive", "docs", "sheets", "calendar"]):
+                google_services.search_google(g_target, open_browser=True)
+                summary = google_services.format_search_summary(g_target)
+                return True, summary
+
+        # Campaign Language Settings
+        if any(p in clean_lower for p in [
+            "run campaigns only in english", "run campaign only in english", "campaigns only in english",
+            "campaign in english only", "campaigns in english only", "only in english and not in any other language",
+            "set campaign language to english"
+        ]):
+            return True, "Understood, sir. All marketing campaigns, cold outreach sequences, follow-up scripts, and business documents are strictly configured to run exclusively in English. No other language will be used."
+
+        # Monthly Business Scan
+        if any(p in clean_lower for p in [
+            "scan for new business", "monthly business scan", "scan new business",
+            "business scan", "scan business opportunities", "find new business this month"
+        ]):
+            from core.business_scanner import business_scanner
+            res = business_scanner.scan_for_new_business(force=True)
+            return True, res["message"]
+
+        # Self-Upgrade and Automation (Every 3rd Night or Manual Directive)
+        if any(p in clean_lower for p in [
+            "upgrade yourself", "run self upgrade", "upgrade and automate",
+            "upgrade and automate yourself", "self evolution", "run self-upgrade"
+        ]):
+            from core.self_evolver import self_evolver
+            res = self_evolver.run_self_upgrade_and_automation(force=True)
+            return True, res["message"]
+
+        # ─────────────────────────────────────────────────────────────────────
         # 2. Application, Folder & Script Launching
         # ─────────────────────────────────────────────────────────────────────
         folder_match = re.match(r"^(?:open|explore|show)\s+(?:the\s+)?(?:folder|directory)\s+(.+)$", clean_lower)
@@ -125,7 +205,11 @@ class LocalIntelligence:
         run_match = re.match(r"^(?:run|execute)\s+(.+)$", clean_lower)
         if run_match:
             r_target = run_match.group(1).strip()
-            if not any(w in r_target for w in [" ai", " expert", " specialist", " model", "document generation", "marketing", "lead generation", "problem handling"]):
+            if not any(w in r_target for w in [
+                " ai", " expert", " specialist", " model", "document generation",
+                "marketing", "lead generation", "problem handling",
+                "campaign", "holograph", "pending", "business", "upgrade"
+            ]):
                 res = system_controller.execute_program(r_target)
                 return True, res
 

@@ -22,6 +22,10 @@ from tools.clipboard_sentinel import clipboard_sentinel
 from tools.system_optimizer import system_optimizer
 from tools.screen_reader import screen_reader
 from tools.display_controller import display_controller
+from tools.google_services import google_services
+from tools.pdf_generator import pdf_generator
+from tools.notification_sentinel import notification_sentinel
+from core.hologram_sentinel import hologram_sentinel
 from core.schedule_manager import schedule_manager
 from core.online_intelligence import online_intelligence
 from core.vector_memory import vector_memory
@@ -88,7 +92,18 @@ class TaskOrchestrator:
         "adaptive_ambient_display": lambda: display_controller.apply_adaptive_ambient(),
         "display_status": lambda: display_controller.format_status_summary(),
         # External AI Delegation & Multi-Model Command
-        "command_other_ai": lambda prompt="", model_name="auto": online_intelligence.query_specific_model(str(prompt), str(model_name))
+        "command_other_ai": lambda prompt="", model_name="auto": online_intelligence.query_specific_model(str(prompt), str(model_name)),
+        # Google Services & Ecosystem Integration
+        "search_google": lambda query="": google_services.format_search_summary(str(query)),
+        "google_maps": lambda query="": google_services.search_maps(str(query), open_browser=True),
+        "google_directions": lambda origin="", destination="", travel_mode="driving": google_services.get_directions(str(origin), str(destination), str(travel_mode), open_browser=True),
+        "open_gmail": lambda: google_services.open_gmail(),
+        "compose_gmail": lambda to="", subject="", body="": google_services.compose_email(str(to), str(subject), str(body), open_browser=True),
+        # Executive PDF Document & Windows Notification Controls
+        "generate_pdf": lambda title="", content="": str(pdf_generator.generate_pdf(str(title), str(content))),
+        "send_notification": lambda title="J.A.R.V.I.S. Alert", message="": notification_sentinel.notify(str(title), str(message)),
+        # Holographic Tactical HUD Always-On Control
+        "set_hologram_always_on": lambda enabled=True: hologram_sentinel.set_always_on(bool(enabled))
     }
 
     SYSTEM_PROMPT = (
@@ -160,7 +175,8 @@ class TaskOrchestrator:
         if any(lower.startswith(p) for p in [
             "add pending task", "queue task", "create task", "add task",
             "what are my pending tasks", "show pending tasks", "list pending tasks",
-            "run pending tasks", "execute pending tasks", "complete pending tasks"
+            "run pending tasks", "execute pending tasks", "complete pending tasks",
+            "who are you", "what are you", "tell me about yourself", "how do you work", "introduce yourself"
         ]):
             return False
 

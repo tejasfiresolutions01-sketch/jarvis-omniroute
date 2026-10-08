@@ -41,8 +41,18 @@ class HologramSentinel:
         self._last_manual_summon_time = 0.0
         self._app_focus_streak = 0
         self._tracked_windows: Dict[int, Tuple[str, float]] = {}  # hwnd -> (title, first_seen_timestamp)
+        self.always_on = getattr(config, "HUD_ALWAYS_ON", True)
         self.user32 = ctypes.windll.user32
         self.kernel32 = ctypes.windll.kernel32
+
+    def set_always_on(self, enabled: bool = True) -> str:
+        """Configures holographic interface to run on screen all the time."""
+        self.always_on = enabled
+        if enabled:
+            self.display_hologram(reason="always_on_activated")
+            return "Holographic interface is now set to run continuously at all times on screen, sir."
+        else:
+            return "Adaptive holographic background mode restored, sir."
 
     def get_hud_hwnd(self) -> Optional[int]:
         """Finds the native Win32 window handle for J.A.R.V.I.S. Tactical HUD."""
@@ -144,8 +154,10 @@ class HologramSentinel:
             print(f"[Holographic Sentinel Error]: Failed to spawn HUD process: {e}")
             return False
 
-    def hide_hologram(self) -> bool:
+    def hide_hologram(self, force: bool = False) -> bool:
         """Hides the Holographic HUD into background stealth mode."""
+        if self.always_on and not force:
+            return False
         hwnd = self.get_hud_hwnd()
         if hwnd:
             self.user32.ShowWindow(hwnd, 0)  # SW_HIDE
@@ -231,6 +243,12 @@ class HologramSentinel:
 
                 # Check manual summon grace period
                 in_manual_grace = (now - self._last_manual_summon_time < 8.0)
+
+                # Always-On Mode: User requested holographic interface run all time on screen
+                if self.always_on:
+                    if not self.is_hologram_visible():
+                        self.display_hologram(reason="always_on_persistence")
+                    continue
 
                 # Behavior A: User is working with an external application or website
                 if not is_desktop_or_idle and not is_hud_focused and not in_manual_grace:

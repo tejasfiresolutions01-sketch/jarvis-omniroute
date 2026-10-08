@@ -69,3 +69,9 @@ COMPLETED_TASKS_DIR.mkdir(parents=True, exist_ok=True)
 
 # HUD Settings
 HUD_WINDOW_TITLE = "J.A.R.V.I.S. // STARK INDUSTRIES TACTICAL HUD"
+HUD_ALWAYS_ON = os.getenv("HUD_ALWAYS_ON", "true").lower() in ("true", "1", "yes")
+
+# Campaign & Business Language Settings (Strictly English Only)
+CAMPAIGN_LANGUAGE = os.getenv("CAMPAIGN_LANGUAGE", "English")
+CAMPAIGN_ENGLISH_ONLY = os.getenv("CAMPAIGN_ENGLISH_ONLY", "true").lower() in ("true", "1", "yes")
+

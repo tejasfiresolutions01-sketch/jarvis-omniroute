@@ -402,6 +402,8 @@ class FreeAIMatrix:
 
         lead_model = op_info["lead_model"]
         system_role = op_info["system_role"]
+        if getattr(config, "CAMPAIGN_ENGLISH_ONLY", True):
+            system_role += " CRITICAL DIRECTIVE: Deliver all strategies, marketing copies, outreach sequences, pitches, documents, and responses STRICTLY and EXCLUSIVELY in the English language. Do not output in any other language."
 
         content = self._call_omniroute(lead_model, prompt, system_prompt=system_role)
         if not content and "fallback_model" in op_info:

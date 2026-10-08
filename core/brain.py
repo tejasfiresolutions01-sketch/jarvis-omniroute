@@ -150,19 +150,35 @@ class JarvisBrain:
             )
             return enforce_single_question(online_res)
 
-        # 12. Graceful Offline Butler Fallback (When no cloud model is reached)
-        fallback_msg = (
-            f"Directive acknowledged, sir. While cloud neural networks are currently unreachable, "
-            f"all local butler subroutines, schedule controls, and device automations remain fully active at your command."
+        # 12. Problem Healing & Simple English Resolution
+        from core.problem_healer import problem_healer
+        retry_res = problem_healer.heal_and_retry_query(redacted_prompt, context=full_context)
+        if retry_res:
+            memory.log_interaction("JARVIS (Self-Healed Core)", retry_res)
+            vector_memory.index_interaction(clean_prompt, retry_res)
+            return enforce_single_question(retry_res)
+
+        # Check if local butler intelligence can fulfill directive directly
+        handled, local_res = local_intelligence.evaluate_and_execute(clean_prompt)
+        if handled:
+            memory.log_interaction("JARVIS (Local Core)", local_res)
+            vector_memory.index_interaction(clean_prompt, local_res)
+            return enforce_single_question(local_res)
+
+        # When network is genuinely offline and prompt cannot be answered locally,
+        # explain the problem in simple, clear English and notify only if unrectified.
+        rectified, explanation = problem_healer.handle_problem(
+            problem_type="network",
+            details="Unable to connect to online neural networks for query.",
+            notify_if_unrectified=True
         )
-        memory.log_interaction("JARVIS (Butler Core)", fallback_msg)
-        vector_memory.index_interaction(clean_prompt, fallback_msg)
-        cognitive_memory.record_episode(
-            f"User: {clean_prompt} -> J.A.R.V.I.S. (Offline Butler Fallback)",
-            episode_type="fallback",
-            importance=2
+        simple_msg = (
+            "I could not connect to the network to check that right now, sir. "
+            "I tried restarting our connection gateway, but it is currently offline."
         )
-        return enforce_single_question(fallback_msg)
+        memory.log_interaction("JARVIS (Problem Explanation)", simple_msg)
+        vector_memory.index_interaction(clean_prompt, simple_msg)
+        return enforce_single_question(simple_msg)
 
 # Global singleton
 brain = JarvisBrain()
