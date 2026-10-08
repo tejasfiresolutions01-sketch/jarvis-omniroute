@@ -83,11 +83,7 @@ class ProblemHealer:
                 return True, "Internet connectivity is verified and operational."
             except Exception:
                 logger.warning("[Problem Healer]: Internet connectivity check failed.")
-                return False, (
-                    "I am unable to connect to the internet right now, sir. "
-                    "I tried restarting our local connection gateway, but the network is still offline. "
-                    "Please check your Wi-Fi or network connection."
-                )
+                return False, "I cannot connect to the internet right now, sir. Please check your network connection."
         except Exception as e:
             logger.error(f"[Problem Healer]: Network healing encountered error: {e}")
             return False, "I cannot connect to the internet right now, sir. Please check your network connection."

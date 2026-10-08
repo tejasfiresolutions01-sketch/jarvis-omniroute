@@ -154,7 +154,7 @@ class JarvisBrain:
             )
             return enforce_single_question(online_res)
 
-        # 11b. Fast Zero-Cost Conceptual Synthesis Fallback
+        # 11b. Fast Zero-Cost Conceptual & Knowledge Synthesis Fallback
         if is_concept:
             concept_res = conceptual_synthesizer.synthesize(clean_prompt)
             if concept_res:
@@ -162,35 +162,29 @@ class JarvisBrain:
                 vector_memory.index_interaction(clean_prompt, concept_res)
                 return enforce_single_question(concept_res)
 
-        # 12. Problem Healing & Simple English Resolution
-        from core.problem_healer import problem_healer
-        retry_res = problem_healer.heal_and_retry_query(redacted_prompt, context=full_context)
-        if retry_res:
-            memory.log_interaction("JARVIS (Self-Healed Core)", retry_res)
-            vector_memory.index_interaction(clean_prompt, retry_res)
-            return enforce_single_question(retry_res)
-
-        # Check if local butler intelligence can fulfill directive directly
+        # 12. Check if prompt can be fulfilled by local butler intelligence
         handled, local_res = local_intelligence.evaluate_and_execute(clean_prompt)
         if handled:
             memory.log_interaction("JARVIS (Local Core)", local_res)
             vector_memory.index_interaction(clean_prompt, local_res)
             return enforce_single_question(local_res)
 
-        # When network is genuinely offline and prompt cannot be answered locally,
-        # explain the problem in simple, clear English and notify only if unrectified.
+        # 13. Problem Healing & Simple English Resolution
+        from core.problem_healer import problem_healer
         rectified, explanation = problem_healer.handle_problem(
             problem_type="network",
             details="Unable to connect to online neural networks for query.",
             notify_if_unrectified=True
         )
-        simple_msg = (
-            "I could not connect to the network to check that right now, sir. "
-            "I tried restarting our connection gateway, but it is currently offline."
-        )
-        memory.log_interaction("JARVIS (Problem Explanation)", simple_msg)
-        vector_memory.index_interaction(clean_prompt, simple_msg)
-        return enforce_single_question(simple_msg)
+
+        if rectified:
+            repaired_msg = "I have restored our network connection, sir. How may I be of service?"
+            return enforce_single_question(repaired_msg)
+
+        offline_msg = explanation if explanation else "I cannot connect to the internet right now, sir. Please check your network connection."
+        memory.log_interaction("JARVIS (Offline Notice)", offline_msg)
+        vector_memory.index_interaction(clean_prompt, offline_msg)
+        return enforce_single_question(offline_msg)
 
 # Global singleton
 brain = JarvisBrain()

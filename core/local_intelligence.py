@@ -476,6 +476,43 @@ class LocalIntelligence:
             return True, omniroute_controller.get_butler_summary()
 
         # ─────────────────────────────────────────────────────────────────────
+        # 5b-2. Network & Connection Gateway Repair / Reconnection
+        # ─────────────────────────────────────────────────────────────────────
+        if any(p in clean_lower for p in [
+            "repair it", "fix it", "repair network", "fix network", "repair the network",
+            "fix the network", "repair connection", "fix connection", "repair the connection",
+            "fix the connection", "reconnect network", "reconnect gateway", "restart gateway",
+            "repair gateway", "reconnect", "fix internet", "repair internet", "network repair",
+            "connection repair", "troubleshoot connection", "troubleshoot network"
+        ]) or clean_lower in ["repair", "reconnect", "fix"]:
+            from core.problem_healer import problem_healer
+            import urllib.request
+            # Execute automated repair routine
+            rectified, explanation = problem_healer.handle_problem(
+                problem_type="network",
+                details="Manual user directive to repair connection gateway.",
+                notify_if_unrectified=False
+            )
+            # Verify internet reachability
+            is_online = False
+            try:
+                urllib.request.urlopen("https://www.google.com", timeout=3.0)
+                is_online = True
+            except Exception:
+                pass
+
+            if is_online:
+                return True, (
+                    "I have re-initialized the local connection gateway and verified our network status, sir. "
+                    "Internet connectivity is operational and all internal subroutines are fully synchronized."
+                )
+            else:
+                return True, (
+                    "I have restarted our connection gateway, but your workstation cannot reach the internet right now, sir. "
+                    "Please check your Wi-Fi or router connection."
+                )
+
+        # ─────────────────────────────────────────────────────────────────────
         # 5c. Local LAN Perimeter & IoT Reconnaissance
         # ─────────────────────────────────────────────────────────────────────
         if any(p in clean_lower for p in [
