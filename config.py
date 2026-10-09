@@ -36,6 +36,7 @@ NOTIFY_ONLY_ONCE = True
 
 # Network & Port Settings
 WEB_PORTAL_PORT = int(os.getenv("WEB_PORTAL_PORT", "5050"))
+WEB_PORTAL_WS_PORT = int(os.getenv("WEB_PORTAL_WS_PORT", "5051"))
 OMNIROUTE_PORT = int(os.getenv("OMNIROUTE_PORT", "20128"))
 OMNIROUTE_BASE_URL = os.getenv("OMNIROUTE_BASE_URL", f"http://localhost:{OMNIROUTE_PORT}/v1")
 OMNIROUTE_MODEL = os.getenv("OMNIROUTE_MODEL", "auto/best-fast")

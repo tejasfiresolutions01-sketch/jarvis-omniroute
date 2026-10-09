@@ -114,10 +114,15 @@ class NotificationGuard:
             return True
 
     def _vocalize(self, text: str):
-        """Dispatches voice synthesis safely."""
+        """Dispatches voice synthesis safely and broadcasts to connected web/PWA clients."""
         try:
             from core.voice import speak
             speak(text)
+        except Exception:
+            pass
+        try:
+            from ui.web_portal import web_portal
+            web_portal.broadcast_notification("J.A.R.V.I.S. Notification", text)
         except Exception:
             pass
 
