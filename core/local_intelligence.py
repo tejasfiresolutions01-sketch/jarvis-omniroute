@@ -823,6 +823,42 @@ class LocalIntelligence:
             return True, f"Snippet execution {status_txt} in {res['duration_ms']}ms.{out_txt}{err_txt}"
 
         # ─────────────────────────────────────────────────────────────────────
+        # Skill 11: Autonomous Software Builder & Application Architect
+        # ─────────────────────────────────────────────────────────────────────
+        if any(p in clean_lower for p in ["software builder status", "app builder status", "autonomous dev status"]):
+            from tools.software_builder_agent import software_builder_agent
+            st = software_builder_agent.get_status()
+            return True, f"Software Builder online. Status: {st['status']}. Archetypes: {', '.join(st['supported_archetypes'])}. Apps directory: {st['apps_directory']}. Applications built: {st['total_applications_built']}."
+
+        app_scaffold_match = re.match(r"^(?:create application|build application|scaffold app|create app)\s+([a-zA-Z0-9_\-]+)(?:\s+(?:as|type)\s+(python_cli|python_api|web_app|python_gui))?(?:\s+(?:with spec|spec)\s+(.+))?$", clean, re.IGNORECASE)
+        if app_scaffold_match:
+            app_n = app_scaffold_match.group(1).strip()
+            app_t = app_scaffold_match.group(2) or "python_cli"
+            app_s = app_scaffold_match.group(3) or "Automated fullstack software project"
+            from tools.software_builder_agent import software_builder_agent
+            res = software_builder_agent.scaffold_application(app_name=app_n, app_type=app_t, spec=app_s)
+            v = res["verification"]
+            return True, f"Application '{res['app_name']}' created at {res['project_directory']}. Files: {', '.join(res['files_created'])}. Health score: {v['health_score']}/100. Run with: {res['run_command']}."
+
+        auto_build_match = re.match(r"^(?:autonomous build|autonomous dev|build project)\s*(?:[:\-])?\s+(.+)$", clean, re.IGNORECASE)
+        if auto_build_match:
+            goal_text = auto_build_match.group(1).strip()
+            from tools.software_builder_agent import software_builder_agent
+            res = software_builder_agent.autonomous_task_loop(goal=goal_text)
+            passed_txt = "All tests passed" if res["tests_passed"] else "Completed with manual verification needed"
+            return True, f"Autonomous task loop complete for '{goal_text}'. Project: {res['project_path']}. Iterations: {res['iterations_used']}. Status: {passed_txt} in {res['duration_seconds']}s. Run with: {res['run_command']}."
+
+        verify_proj_match = re.match(r"^(?:verify project|audit project)\s+(.+)$", clean, re.IGNORECASE)
+        if verify_proj_match:
+            proj_p = verify_proj_match.group(1).strip()
+            from tools.software_builder_agent import software_builder_agent
+            res = software_builder_agent.verify_project(proj_p)
+            if not res.get("success"):
+                return True, f"Project verification failed: {res.get('error')}"
+            prod_status = "Production Ready" if res["ready_for_production"] else "Attention Needed"
+            return True, f"Project verification for {res['directory']}: Health Score {res['health_score']}/100 ({prod_status}). Python files: {res['python_files_count']}. Tests passed: {res['tests_passed']}."
+
+        # ─────────────────────────────────────────────────────────────────────
         # 2. Application, Folder & Script Launching
         # ─────────────────────────────────────────────────────────────────────
         folder_match = re.match(r"^(?:open|explore|show)\s+(?:the\s+)?(?:folder|directory)\s+(.+)$", clean_lower)

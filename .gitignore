@@ -46,6 +46,8 @@ logs/*
 !logs/.gitkeep
 temp/*
 !temp/.gitkeep
+apps/*
+!apps/.gitkeep
 dennett_dissertation/
 
 # ----------------------------------------------------

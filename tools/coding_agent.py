@@ -385,14 +385,17 @@ class CodingAgent:
         if not p.exists():
             return {"success": False, "error": f"Test file not found: {test_path}"}
 
-        cmd = [sys.executable, "-m", "unittest", str(p)]
+        cmd = [sys.executable, "-m", "unittest", p.name]
         start = time.time()
         try:
+            env = os.environ.copy()
+            env["PYTHONPATH"] = f"{str(p.parent)}{os.pathsep}{str(PROJECT_ROOT)}"
             res = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
-                cwd=str(PROJECT_ROOT),
+                cwd=str(p.parent),
+                env=env,
                 timeout=timeout,
             )
             duration = round(time.time() - start, 3)
