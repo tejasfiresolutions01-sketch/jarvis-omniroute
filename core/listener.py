@@ -70,27 +70,12 @@ class VoiceListener:
         silence_duration = 0.0
         start_time = time.time()
 
+        from core.neural_vad import get_neural_vad
+        vad = get_neural_vad(sample_rate=self.sample_rate, chunk_size=self.chunk_size)
+        vad.reset()
+
         try:
             with sd.InputStream(samplerate=self.sample_rate, channels=1, dtype='int16', blocksize=self.chunk_size) as stream:
-                # 1. Quick ambient noise baseline (0.2s)
-                ambient_frames = []
-                for _ in range(2):
-                    chunk, _ = stream.read(self.chunk_size)
-                    ambient_frames.append(chunk)
-                ambient_arr = np.concatenate(ambient_frames).astype(np.float32)
-                ambient_rms = float(np.sqrt(np.mean(ambient_arr ** 2)))
-
-                # Determine dynamic speech energy threshold
-                # If ambient_rms is high (>300), the user was already speaking when the stream opened
-                if ambient_rms > 300.0:
-                    speech_threshold = 180.0
-                    has_started_speaking = True
-                    recorded_frames.extend(ambient_frames)
-                else:
-                    speech_threshold = max(160.0, min(ambient_rms * 1.35, 380.0))
-
-                # Hysteresis continuation threshold: holds speech active during softer mid-sentence words
-                continuation_threshold = max(ambient_rms * 1.15, speech_threshold * 0.70)
 
                 # 2. Main recording loop
                 while True:
@@ -103,14 +88,14 @@ class VoiceListener:
                         break
 
                     chunk, overflow = stream.read(self.chunk_size)
-                    chunk_flt = chunk.astype(np.float32)
-                    chunk_rms = float(np.sqrt(np.mean(chunk_flt ** 2)))
+                    is_speech, prob = vad.process_chunk(chunk)
 
-                    # Use speech_threshold to trigger speech onset, and continuation_threshold to maintain active speech
-                    active_threshold = continuation_threshold if has_started_speaking else speech_threshold
-
-                    if chunk_rms >= active_threshold:
-                        # User is actively speaking
+                    if is_speech:
+                        if not has_started_speaking:
+                            has_started_speaking = True
+                            pre_frames = vad.get_pre_buffered_frames()
+                            if pre_frames:
+                                recorded_frames.extend(pre_frames)
                         has_started_speaking = True
                         silence_duration = 0.0
                         recorded_frames.append(chunk)
