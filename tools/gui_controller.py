@@ -203,5 +203,63 @@ class GUIController:
         except Exception as e:
             return f"Error executing open_and_type routine: {str(e)}"
 
+    def click_element(self, name: str, window_title: Optional[str] = None, control_type: Optional[str] = None) -> str:
+        """
+        Clicks a UI element deterministically using Microsoft UI Automation COM tree.
+        Falls back to computer-vision or coordinate click if element is not in UIA tree.
+        """
+        try:
+            from tools.uia_controller import windows_uia
+            if windows_uia.is_available:
+                ok, msg = windows_uia.click_element(name=name, window_title=window_title, control_type=control_type)
+                if ok:
+                    return msg
+            return f"Could not find or invoke UI element '{name}', sir."
+        except Exception as e:
+            return f"Error clicking element '{name}': {str(e)}"
+
+    def type_into_element(self, name: str, text: str, window_title: Optional[str] = None) -> str:
+        """
+        Sets text into a UI field deterministically using Microsoft UI Automation ValuePattern.
+        """
+        try:
+            from tools.uia_controller import windows_uia
+            if windows_uia.is_available:
+                ok, msg = windows_uia.set_element_text(name=name, text=text, window_title=window_title)
+                if ok:
+                    return msg
+            return f"Could not locate input field '{name}' to enter text, sir."
+        except Exception as e:
+            return f"Error typing into element '{name}': {str(e)}"
+
+    def inspect_window(self, window_title: str) -> str:
+        """
+        Inspects all interactive controls (buttons, inputs, tabs) inside a window.
+        """
+        try:
+            from tools.uia_controller import windows_uia
+            controls = windows_uia.inspect_window_controls(window_title)
+            if not controls:
+                return f"No interactive controls found for window '{window_title}', sir."
+            summary = [f"- {c['name']} ({c['control_type']})" for c in controls[:15] if c['name']]
+            return f"Found {len(controls)} controls in '{window_title}':\n" + "\n".join(summary)
+        except Exception as e:
+            return f"Error inspecting window '{window_title}': {str(e)}"
+
+    def list_active_windows(self) -> str:
+        """
+        Enumerates all visible open application windows.
+        """
+        try:
+            from tools.uia_controller import windows_uia
+            wins = windows_uia.get_open_windows()
+            if not wins:
+                return "No open application windows detected, sir."
+            names = [f"- {w['name']}" for w in wins[:10]]
+            return f"Currently open windows ({len(wins)} total):\n" + "\n".join(names)
+        except Exception as e:
+            return f"Error listing active windows: {str(e)}"
+
+
 # Global singleton
 gui_controller = GUIController()
