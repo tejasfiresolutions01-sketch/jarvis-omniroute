@@ -865,8 +865,29 @@ class LocalIntelligence:
             )
 
         # ─────────────────────────────────────────────────────────────────────
-        # 5a. Real-Time Web Search & Internet Intelligence
+        # 5a. Real-Time Web Search, Intelligence & Targeted Information Streams
         # ─────────────────────────────────────────────────────────────────────
+        if any(p in clean_lower for p in ["web connection status", "check web connection", "test internet connection", "check internet", "web status"]):
+            from tools.web_agent import web_agent
+            st = web_agent.check_connection()
+            lat_str = ", ".join(st["latencies"]) if st["latencies"] else "latency test pending"
+            return True, f"Web connection is {st['status']}, sir. Endpoint latencies: {lat_str}."
+
+        if any(p in clean_lower for p in [
+            "check web streams", "web stream briefing", "tech news stream", "world news stream",
+            "science stream", "business stream", "stream briefing", "news stream", "information stream", "targeted stream"
+        ]):
+            from tools.web_stream_monitor import web_stream_monitor
+            cat = "tech"
+            if "world" in clean_lower:
+                cat = "world"
+            elif "science" in clean_lower:
+                cat = "science"
+            elif "business" in clean_lower:
+                cat = "business"
+            briefing = web_stream_monitor.format_briefing(category=cat)
+            return True, briefing
+
         search_match = re.search(
             r"^(?:search the web for|search the internet for|search web for|search online for|search for|google|look up on web|look up on internet|web search)\s+(.+)$",
             clean,
@@ -874,9 +895,24 @@ class LocalIntelligence:
         )
         if search_match:
             query = search_match.group(1).strip()
-            from tools.web_tools import search_web
-            results = search_web(query)
-            return True, results
+            from tools.web_agent import web_agent
+            res = web_agent.search(query)
+            return True, res["summary"]
+
+        scrape_match = re.search(
+            r"^(?:scrape webpage|scrape site|scrape url|scrape content from)\s+(https?://\S+|\S+\.\S+)$",
+            clean,
+            re.IGNORECASE
+        )
+        if scrape_match:
+            url = scrape_match.group(1).strip()
+            from tools.web_agent import web_agent
+            res = web_agent.scrape_structured(url)
+            if not res.get("success"):
+                return True, f"Failed to scrape {url}, sir. Error: {res.get('error')}"
+            h_str = "\n".join(res["headings"][:6]) if res["headings"] else "No major headings detected."
+            l_count = len(res["links"])
+            return True, f"Structured scraping of {url} completed, sir.\nHeadings:\n{h_str}\nExtracted {l_count} hyperlinks."
 
         fetch_match = re.search(
             r"^(?:fetch webpage|read webpage|fetch site|read site|read url)\s+(https?://\S+|\S+\.\S+)$",
@@ -885,9 +921,45 @@ class LocalIntelligence:
         )
         if fetch_match:
             url = fetch_match.group(1).strip()
-            from tools.web_tools import fetch_webpage_content
-            content = fetch_webpage_content(url)
-            return True, f"Web content from {url}, sir:\n{content}"
+            from tools.web_agent import web_agent
+            res = web_agent.read_webpage(url)
+            if not res.get("success"):
+                return True, f"Unable to fetch content from {url}, sir: {res.get('error')}"
+            return True, f"Web content from {url}, sir:\n{res['text']}"
+
+        design_match = re.search(
+            r"^(?:design webpage|design web preview|design site|create web preview)\s+(.+)$",
+            clean,
+            re.IGNORECASE
+        )
+        if design_match:
+            title = design_match.group(1).strip()
+            from tools.web_agent import web_agent
+            html_snippet = f"<h2>{title.upper()}</h2><p>Responsive high-tech interface generated autonomously by J.A.R.V.I.S. Design Studio.</p>"
+            path = web_agent.design_preview(title, html_snippet, auto_open=True)
+            return True, f"Web interface for '{title}' designed and launched in local browser, sir. Saved to: {path}"
+
+        # ─────────────────────────────────────────────────────────────────────
+        # 5a-1. Daily Upgrade Advisory & Permission-Gated Execution
+        # ─────────────────────────────────────────────────────────────────────
+        approve_match = re.search(r"^(?:approve upgrade|execute upgrade|deploy upgrade|apply upgrade)\s+([a-zA-Z0-9\-_]+)$", clean, re.IGNORECASE)
+        if approve_match:
+            up_id = approve_match.group(1).strip()
+            from core.upgrade_advisor import upgrade_advisor
+            success, msg = upgrade_advisor.execute_approved_upgrade(up_id)
+            return True, msg
+
+        if any(p in clean_lower for p in [
+            "suggest daily upgrades", "show daily upgrades", "suggest upgrades", "show major upgrades",
+            "show minor upgrades", "daily upgrade advisory", "upgrade advisory", "upgrade suggestions", "suggest 5 major upgrades"
+        ]):
+            from core.upgrade_advisor import upgrade_advisor
+            mode = "all"
+            if "major" in clean_lower:
+                mode = "major"
+            elif "minor" in clean_lower:
+                mode = "minor"
+            return True, upgrade_advisor.format_briefing(view_mode=mode)
 
         # ─────────────────────────────────────────────────────────────────────
         # 5a-2. Command Universal Free AI Matrix (Global Models, OmniRoute Providers & Every Field of Work)
