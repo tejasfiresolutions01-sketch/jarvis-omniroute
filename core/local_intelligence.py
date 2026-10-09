@@ -555,7 +555,8 @@ class LocalIntelligence:
             if not any(w in r_target for w in [
                 " ai", " expert", " specialist", " model", "document generation",
                 "marketing", "lead generation", "problem handling",
-                "campaign", "holograph", "pending", "business", "upgrade"
+                "campaign", "holograph", "pending", "business", "upgrade",
+                "heal", "repair", "self healing", "self repair"
             ]):
                 res = system_controller.execute_program(r_target)
                 return True, res
@@ -846,10 +847,19 @@ class LocalIntelligence:
                 )
 
         # ─────────────────────────────────────────────────────────────────────
-        # 5b-3. Autonomous Self-Repair & Full Subsystem Healing
+        # 5b-3. Autonomous Self-Repair, Process Resilience & System Health
         # ─────────────────────────────────────────────────────────────────────
         if any(p in clean_lower for p in [
+            "system health", "health report", "self healing status", "daemon health",
+            "sentinel status", "resilience status", "system resilience", "daemons status",
+            "health status", "resilience score"
+        ]):
+            from core.self_repair import self_repair_engine
+            return True, self_repair_engine.get_health_voice_summary()
+
+        if any(p in clean_lower for p in [
             "repair yourself", "fix yourself", "self repair", "run self repair",
+            "run self healing", "heal system", "self repair system", "self heal",
             "heal yourself", "repair jarvis", "fix jarvis", "diagnose and repair",
             "check and repair", "system self repair", "repair all systems",
             "repair everything", "repair it", "fix it", "repair network", "fix network",
@@ -857,8 +867,8 @@ class LocalIntelligence:
             "repair the connection", "fix the connection", "reconnect network",
             "reconnect gateway", "restart gateway", "repair gateway", "reconnect",
             "fix internet", "repair internet", "network repair", "connection repair",
-            "troubleshoot connection", "troubleshoot network"
-        ]) or clean_lower in ["repair", "reconnect", "fix", "self-repair"]:
+            "troubleshoot connection", "troubleshoot network", "prune memory", "prune resources"
+        ]) or clean_lower in ["repair", "reconnect", "fix", "self-repair", "heal"]:
             from core.self_repair import self_repair_engine
             res = self_repair_engine.run_full_repair(manual=True)
             return True, res.get(
