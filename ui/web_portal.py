@@ -783,6 +783,12 @@ class PortalHandler(http.server.BaseHTTPRequestHandler):
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             self.wfile.write(json.dumps(get_telemetry_snapshot()).encode("utf-8"))
+        elif self.path == "/api/iot":
+            from tools.smart_home_controller import smart_home
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(smart_home.get_devices()).encode("utf-8"))
         else:
             self.send_response(404)
             self.end_headers()
@@ -817,6 +823,23 @@ class PortalHandler(http.server.BaseHTTPRequestHandler):
                 self.send_header("Content-Type", "application/json")
                 self.end_headers()
                 self.wfile.write(json.dumps({"status": "broadcast_dispatched"}).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+        elif self.path == "/api/iot/command":
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length)
+            try:
+                from tools.smart_home_controller import smart_home
+                data = json.loads(body.decode("utf-8"))
+                directive = data.get("directive") or data.get("command") or ""
+                handled, resp = smart_home.parse_and_execute(directive)
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"handled": handled, "response": resp}).encode("utf-8"))
             except Exception as e:
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json")
@@ -914,6 +937,23 @@ class WebPortalServer:
                         websocket.send(json.dumps({
                             "type": "pong",
                             "timestamp": time.time()
+                        }))
+                    elif action == "iot_command":
+                        from tools.smart_home_controller import smart_home
+                        directive = payload.get("directive", "")
+                        h, r = smart_home.parse_and_execute(directive)
+                        websocket.send(json.dumps({
+                            "type": "iot_response",
+                            "id": req_id,
+                            "handled": h,
+                            "response": r
+                        }))
+                    elif action == "iot_status":
+                        from tools.smart_home_controller import smart_home
+                        websocket.send(json.dumps({
+                            "type": "iot_status",
+                            "id": req_id,
+                            "devices": smart_home.get_devices()
                         }))
                 except Exception as inner_e:
                     websocket.send(json.dumps({"type": "error", "error": str(inner_e)}))

@@ -864,6 +864,12 @@ class LocalIntelligence:
             from tools.network_scanner import network_scanner
             return True, network_scanner.format_butler_perimeter_report()
 
+        # Smart Home IoT & Perimeter Automation Directives
+        from tools.smart_home_controller import smart_home
+        is_iot, iot_resp = smart_home.parse_and_execute(clean)
+        if is_iot:
+            return True, iot_resp
+
         # ─────────────────────────────────────────────────────────────────────
         # 5d. Autonomous Git & Codebase Version Control
         # ─────────────────────────────────────────────────────────────────────

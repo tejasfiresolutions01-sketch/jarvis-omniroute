@@ -179,28 +179,35 @@ class SpatialGestureEngine:
             cap = None
             try:
                 cap = cv2.VideoCapture(camera_index)
-                while not self._stop_event.is_set() and cap.isOpened():
-                    ret, frame = cap.read()
-                    if not ret:
+                while not self._stop_event.is_set():
+                    if cap and cap.isOpened():
+                        ret, frame = cap.read()
+                        if not ret:
+                            time.sleep(0.05)
+                            continue
+
+                        gesture, meta = self.analyze_frame(frame)
+                        if gesture:
+                            msg = self.dispatch_hud_action(gesture)
+                            logger.info(f"[Spatial Vision]: {msg}")
+                            if self._callback:
+                                try:
+                                    self._callback(gesture, meta)
+                                except Exception:
+                                    pass
+
+                        time.sleep(0.033)  # ~30 FPS loop
+                    else:
+                        # Non-existent camera or headless environment: wait on stop event
                         time.sleep(0.05)
-                        continue
-
-                    gesture, meta = self.analyze_frame(frame)
-                    if gesture:
-                        msg = self.dispatch_hud_action(gesture)
-                        logger.info(f"[Spatial Vision]: {msg}")
-                        if self._callback:
-                            try:
-                                self._callback(gesture, meta)
-                            except Exception:
-                                pass
-
-                    time.sleep(0.033)  # ~30 FPS loop
             except Exception as e:
                 logger.error(f"Gesture tracking encountered error: {e}")
             finally:
                 if cap is not None:
-                    cap.release()
+                    try:
+                        cap.release()
+                    except Exception:
+                        pass
                 self._is_tracking = False
 
         self._thread = threading.Thread(target=_worker, daemon=True, name="GestureTrackerThread")

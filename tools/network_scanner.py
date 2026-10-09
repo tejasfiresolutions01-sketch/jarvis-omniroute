@@ -17,7 +17,12 @@ class NetworkScanner:
     Extracts local host telemetry, gateway routing, ARP neighbor tables, and service ports.
     """
 
-    COMMON_PORTS = [80, 443, 8080, 22, 53, 5000, 20128]
+    COMMON_PORTS = [80, 443, 8080, 8123, 1883, 22, 53, 5000, 20128]
+
+    def scan_iot_devices(self) -> List[Dict[str, Any]]:
+        """Discovers smart home hubs and IoT nodes across the local subnet."""
+        from tools.smart_home_controller import smart_home
+        return smart_home.scan_lan_for_iot()
 
     def get_local_identity(self) -> Dict[str, str]:
         """Returns local hostname, primary IP address, and default gateway."""

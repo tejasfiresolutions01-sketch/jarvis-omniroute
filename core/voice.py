@@ -11,6 +11,7 @@ from pathlib import Path
 import config
 
 _speak_lock = threading.Lock()
+_recent_lock = threading.Lock()
 _current_process = None
 is_speaking = False
 
@@ -50,11 +51,11 @@ def is_recently_spoken(text: str, window: float = 6.0) -> bool:
         return False
 
     now = time.time()
-    # Check exact normalized cache
-    for phrase, ts in list(_recent_spoken.items()):
-        if now - ts <= window:
-            if clean_q in phrase or phrase in clean_q:
-                return True
+    with _recent_lock:
+        for phrase, ts in list(_recent_spoken.items()):
+            if now - ts <= window:
+                if clean_q in phrase or phrase in clean_q:
+                    return True
     return False
 
 def clean_for_speech(text: str) -> str:
@@ -210,7 +211,7 @@ def speak(text: str):
     norm_key = re.sub(r"[^a-zA-Z0-9\s]", "", spoken_text.lower()).strip()
     now = time.time()
     
-    with _speak_lock:
+    with _recent_lock:
         # Prune old keys
         for k in list(_recent_spoken.keys()):
             if now - _recent_spoken[k] > 15.0:
@@ -251,7 +252,7 @@ def speak_sync(text: str):
 
     norm_key = re.sub(r"[^a-zA-Z0-9\s]", "", spoken_text.lower()).strip()
     now = time.time()
-    with _speak_lock:
+    with _recent_lock:
         if norm_key in _recent_spoken and (now - _recent_spoken[norm_key] < _DEDUP_WINDOW_SECONDS):
             return
         _recent_spoken[norm_key] = now
@@ -279,62 +280,62 @@ def _speak_worker(text: str):
             is_speaking = True
             _last_spoken_text = spoken_text
 
-            # 1. Try edge-tts (High Fidelity British Butler)
+        # 1. Try edge-tts (High Fidelity British Butler)
+        try:
+            import edge_tts
+            import pygame
+
+            async def _synthesize():
+                communicate = edge_tts.Communicate(
+                    text=spoken_text,
+                    voice=config.TTS_VOICE,
+                    rate=config.TTS_RATE,
+                    pitch=config.TTS_PITCH
+                )
+                with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
+                    temp_path = f.name
+                await communicate.save(temp_path)
+                return temp_path
+
+            temp_audio = asyncio.run(_synthesize())
+
+            # Play with pygame
+            if not pygame.mixer.get_init():
+                pygame.mixer.init()
+            pygame.mixer.music.load(temp_audio)
+            pygame.mixer.music.play()
+            while pygame.mixer.music.get_busy() and is_speaking:
+                pygame.time.Clock().tick(10)
+            pygame.mixer.music.unload()
             try:
-                import edge_tts
-                import pygame
-
-                async def _synthesize():
-                    communicate = edge_tts.Communicate(
-                        text=spoken_text,
-                        voice=config.TTS_VOICE,
-                        rate=config.TTS_RATE,
-                        pitch=config.TTS_PITCH
-                    )
-                    with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
-                        temp_path = f.name
-                    await communicate.save(temp_path)
-                    return temp_path
-
-                temp_audio = asyncio.run(_synthesize())
-
-                # Play with pygame
-                if not pygame.mixer.get_init():
-                    pygame.mixer.init()
-                pygame.mixer.music.load(temp_audio)
-                pygame.mixer.music.play()
-                while pygame.mixer.music.get_busy() and is_speaking:
-                    pygame.time.Clock().tick(10)
-                pygame.mixer.music.unload()
-                try:
-                    os.remove(temp_audio)
-                except Exception:
-                    pass
-                is_speaking = False
-                return
+                os.remove(temp_audio)
             except Exception:
                 pass
-
-            # 2. Offline Fallback: Windows SAPI5 (pyttsx3)
-            try:
-                import pyttsx3
-                engine = pyttsx3.init()
-                engine.setProperty('rate', 175)
-                voices = engine.getProperty('voices')
-                for v in voices:
-                    if any(k in v.name.lower() for k in ["george", "uk", "british", "english"]):
-                        engine.setProperty('voice', v.id)
-                        break
-                engine.say(spoken_text)
-                engine.runAndWait()
-                is_speaking = False
-                return
-            except Exception:
-                pass
-
-            # 3. Terminal fallback
-            print(f"\n[J.A.R.V.I.S.]: {spoken_text}\n")
             is_speaking = False
+            return
+        except Exception:
+            pass
+
+        # 2. Offline Fallback: Windows SAPI5 (pyttsx3)
+        try:
+            import pyttsx3
+            engine = pyttsx3.init()
+            engine.setProperty('rate', 175)
+            voices = engine.getProperty('voices')
+            for v in voices:
+                if any(k in v.name.lower() for k in ["george", "uk", "british", "english"]):
+                    engine.setProperty('voice', v.id)
+                    break
+            engine.say(spoken_text)
+            engine.runAndWait()
+            is_speaking = False
+            return
+        except Exception:
+            pass
+
+        # 3. Terminal fallback
+        print(f"\n[J.A.R.V.I.S.]: {spoken_text}\n")
+        is_speaking = False
     finally:
         is_speaking = False
         _release_os_speech_lock(lock_handle)
