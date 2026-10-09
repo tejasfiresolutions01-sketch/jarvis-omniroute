@@ -53,3 +53,33 @@ def inspect_physical_camera(query: str = "What do you see through the camera?") 
             pass
 
     return f"Optical webcam frame captured successfully, sir. Snapshot secured to {img_path.name}."
+
+def start_gesture_control(camera_index: int = 0) -> str:
+    """
+    Activates background real-time optical hand gesture tracking for mid-air HUD manipulation.
+    """
+    try:
+        from tools.gesture_controller import spatial_gesture_engine
+        spatial_gesture_engine.start_tracking_daemon(camera_index=camera_index)
+        return "Optical hand gesture tracking matrix active, sir. You may now control the holographic display with mid-air hand motions."
+    except Exception as e:
+        return f"Error activating optical gesture tracking: {e}"
+
+def stop_gesture_control() -> str:
+    """
+    Disarms background hand gesture tracking.
+    """
+    try:
+        from tools.gesture_controller import spatial_gesture_engine
+        spatial_gesture_engine.stop_tracking_daemon()
+        return "Optical hand gesture tracking disarmed, sir."
+    except Exception as e:
+        return f"Error stopping optical gesture tracking: {e}"
+
+def is_gesture_tracking_active() -> bool:
+    """Returns True if hand tracking daemon is active."""
+    try:
+        from tools.gesture_controller import spatial_gesture_engine
+        return spatial_gesture_engine._is_tracking
+    except Exception:
+        return False
