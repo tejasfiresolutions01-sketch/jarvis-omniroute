@@ -420,6 +420,143 @@ class LocalIntelligence:
             hud_telemetry.play_tactical_sound_fx(fx_type)
             return True, f"Tactical audio effect '{fx_type}' synthesized and played, sir."
 
+        # ─────────────────────────────────────────────────────────────────────
+        # Area 5: 3-Dimensional Holographic Projector System & Spatial Optics
+        # ─────────────────────────────────────────────────────────────────────
+        # Deactivation check
+        if any(p in clean_lower for p in [
+            "deactivate 3d projector", "close 3d projector", "turn off 3d projector", "deactivate projector system",
+            "close projector system", "shut down 3d projector", "turn off projector", "deactivate projector"
+        ]):
+            from core.projector_system import projector_system
+            projector_system.deactivate_projector()
+            return True, "3-Dimensional Holographic Projector System deactivated, sir."
+
+        # Activation check
+        if any(p in clean_lower for p in [
+            "activate 3 dimensional projector", "activate 3d projector", "launch 3d projector", "start 3d projector",
+            "enable 3d projector", "open 3d projector", "toggle 3d projector", "3 dimensional projector",
+            "3-dimensional projector", "3d projector system", "3 dimensional projector system", "launch projector system",
+            "activate projector system", "turn on 3d projector", "projector system"
+        ]):
+            from core.projector_system import projector_system
+            mode = "standard"
+            if any(m in clean_lower for m in ["pyramid", "pepper"]):
+                mode = "pyramid"
+            elif any(m in clean_lower for m in ["anaglyph", "stereoscopic", "glasses", "red cyan"]):
+                mode = "anaglyph"
+            elif any(m in clean_lower for m in ["floating", "desktop", "transparent"]):
+                mode = "floating"
+            success = projector_system.activate_projector(mode=mode, model="helmet", fullscreen=False)
+            return True, f"3-Dimensional Holographic Projector System activated in [{mode.upper()}] optical mode, sir. Laser projection emitter is online."
+
+        if any(p in clean_lower for p in [
+            "projector mode pyramid", "pyramid mode", "pepper's ghost", "peppers ghost", "4 way hologram",
+            "4-way hologram", "holographic pyramid", "switch projector to pyramid", "quad hologram"
+        ]):
+            from core.projector_system import projector_system
+            projector_system.set_projection_mode("pyramid")
+            return True, "Projector switched to 4-Way Holographic Pyramid Mode, sir. Four-quadrant Pepper's Ghost optics are aligned for physical prism projection."
+
+        if any(p in clean_lower for p in [
+            "projector mode anaglyph", "anaglyph mode", "stereoscopic mode", "stereoscopic 3d",
+            "3d glasses mode", "red cyan mode", "switch projector to anaglyph", "stereoscopic projection"
+        ]):
+            from core.projector_system import projector_system
+            projector_system.set_projection_mode("anaglyph")
+            return True, "Projector switched to Stereoscopic Anaglyph 3D Mode, sir. Dual-eye chromatic parallax is engaged for red-cyan 3D glasses."
+
+        if any(p in clean_lower for p in [
+            "projector mode floating", "floating mode", "floating desktop", "desktop hologram",
+            "transparent projector", "switch projector to floating", "floating holo-beam"
+        ]):
+            from core.projector_system import projector_system
+            projector_system.set_projection_mode("floating")
+            return True, "Projector switched to Floating Desktop Hologram Mode, sir. Window chrome is removed for seamless desktop projection."
+
+        if any(p in clean_lower for p in [
+            "projector mode standard", "standard projector", "direct beam mode", "switch projector to standard"
+        ]):
+            from core.projector_system import projector_system
+            projector_system.set_projection_mode("standard")
+            return True, "Projector switched to Direct Standard Beam Mode, sir."
+
+        if any(p in clean_lower for p in [
+            "cycle projector mode", "switch projector mode", "next projector mode", "change projector mode"
+        ]):
+            from core.projector_system import projector_system
+            new_mode = projector_system.cycle_mode()
+            return True, f"Projector optical mode cycled to: {new_mode.upper()}, sir."
+
+        if any(p in clean_lower for p in [
+            "project gauntlet", "show gauntlet", "3d gauntlet", "show 3d gauntlet", "repulsor gauntlet",
+            "wireframe gauntlet", "project repulsor gauntlet", "switch to gauntlet"
+        ]):
+            from core.projector_system import projector_system
+            from tools.hud_controller import hud_controller
+            projector_system.set_3d_model("gauntlet")
+            hud_controller.set_3d_model("drone")
+            return True, "Projecting 3D Mark-85 Repulsor Gauntlet on the holographic projector, sir."
+
+        if any(p in clean_lower for p in [
+            "project emitter", "show emitter", "3d emitter", "holo emitter", "projector emitter",
+            "wireframe emitter", "switch to emitter"
+        ]):
+            from core.projector_system import projector_system
+            projector_system.set_3d_model("emitter")
+            return True, "Projecting 3D Conical Holo-Lens Emitter on the holographic projector, sir."
+
+        if any(p in clean_lower for p in [
+            "project drone", "show drone", "3d drone", "stark drone", "wireframe drone",
+            "project stark drone", "switch to drone"
+        ]):
+            from core.projector_system import projector_system
+            from tools.hud_controller import hud_controller
+            projector_system.set_3d_model("drone")
+            hud_controller.set_3d_model("drone")
+            return True, "Projecting 3D Stark Industries Hypersonic Drone on the holographic display, sir."
+
+        if any(p in clean_lower for p in [
+            "cycle projector model", "next projector model", "change projector model"
+        ]):
+            from core.projector_system import projector_system
+            new_m = projector_system.cycle_model()
+            return True, f"Projector 3D wireframe mesh shifted to: {new_m.upper()}, sir."
+
+        if any(p in clean_lower for p in [
+            "project to secondary monitor", "project to external display", "project to secondary display",
+            "project to external projector", "project to second screen", "project on projector", "project on external display"
+        ]):
+            from core.projector_system import projector_system
+            monitors = projector_system.enumerate_monitors()
+            if len(monitors) > 1:
+                projector_system.set_target_monitor(1)
+                return True, f"Projector output successfully routed to External Display / Secondary Monitor #{1}, sir."
+            else:
+                projector_system.set_target_monitor(0)
+                return True, "Only one primary display was detected, sir. 3D projection is active on the primary display."
+
+        if any(p in clean_lower for p in [
+            "increase projector depth", "increase projector parallax", "more 3d depth", "increase 3d depth"
+        ]):
+            from core.projector_system import projector_system
+            new_p = projector_system.adjust_parallax(2.0)
+            return True, f"Stereoscopic 3D parallax depth increased to {new_p:.1f} pixels, sir."
+
+        if any(p in clean_lower for p in [
+            "decrease projector depth", "decrease projector parallax", "less 3d depth", "decrease 3d depth"
+        ]):
+            from core.projector_system import projector_system
+            new_p = projector_system.adjust_parallax(-2.0)
+            return True, f"Stereoscopic 3D parallax depth decreased to {new_p:.1f} pixels, sir."
+
+        if any(p in clean_lower for p in [
+            "projector status", "projector diagnostics", "projector vitals", "projector telemetry"
+        ]):
+            from core.projector_system import projector_system
+            st = projector_system.get_status()
+            return True, f"Projector System Status: Active: {st['active']}. Mode: {st['mode']}. Model: {st['model']}. Target: {st['target_display']}. Parallax: {st['parallax_depth_px']}px."
+
         # Holographic Projector Fullscreen Mode (F11)
         if any(p in clean_lower for p in [
             "projector mode", "fullscreen projector", "toggle projector mode",

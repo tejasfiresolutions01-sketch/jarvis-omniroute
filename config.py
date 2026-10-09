@@ -6,6 +6,14 @@ from dotenv import load_dotenv
 # Base Directory
 BASE_DIR = Path(__file__).resolve().parent
 
+# Suppress Windows GP fault error boxes (SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX | SEM_NOOPENFILEERRORBOX)
+if sys.platform == "win32":
+    try:
+        import ctypes
+        ctypes.windll.kernel32.SetErrorMode(0x0001 | 0x0002 | 0x8000)
+    except Exception:
+        pass
+
 # Load .env file
 load_dotenv(dotenv_path=BASE_DIR / ".env")
 
@@ -77,9 +85,10 @@ ASSETS_DIR.mkdir(parents=True, exist_ok=True)
 LOGS_DIR.mkdir(parents=True, exist_ok=True)
 COMPLETED_TASKS_DIR.mkdir(parents=True, exist_ok=True)
 
-# HUD Settings
+# HUD & Projector Settings
 HUD_WINDOW_TITLE = "J.A.R.V.I.S. // STARK INDUSTRIES TACTICAL HUD"
 HUD_ALWAYS_ON = os.getenv("HUD_ALWAYS_ON", "true").lower() in ("true", "1", "yes")
+PROJECTOR_WINDOW_TITLE = "J.A.R.V.I.S. // 3D HOLOGRAPHIC PROJECTOR SYSTEM"
 
 # Campaign & Business Language Settings (Strictly English Only)
 CAMPAIGN_LANGUAGE = os.getenv("CAMPAIGN_LANGUAGE", "English")

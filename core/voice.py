@@ -306,7 +306,12 @@ def _speak_worker(text: str):
             pygame.mixer.music.play()
             while pygame.mixer.music.get_busy() and is_speaking:
                 pygame.time.Clock().tick(10)
-            pygame.mixer.music.unload()
+            try:
+                if pygame.mixer.get_init():
+                    pygame.mixer.music.stop()
+                    pygame.mixer.music.unload()
+            except Exception:
+                pass
             try:
                 os.remove(temp_audio)
             except Exception:

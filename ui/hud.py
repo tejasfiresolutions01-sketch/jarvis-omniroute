@@ -230,6 +230,13 @@ class TacticalHUD:
             self.btn_fullscreen.config(text="⛶ PROJECTOR MODE")
             self.append_log("SYSTEM", "Windowed Holographic Display Mode restored.")
 
+    def launch_3d_projector(self):
+        """Activates the dedicated 3-Dimensional Holographic Projector System."""
+        self._play_fx("target_lock")
+        from core.projector_system import projector_system
+        projector_system.activate_projector(mode="standard", model=self.active_3d_model)
+        self.append_log("SYSTEM", "3-Dimensional Holographic Projector System activated.")
+
     def set_3d_model(self, model_name: str):
         """Switches the active rotating 3D wireframe object."""
         self.active_3d_model = model_name
@@ -291,6 +298,21 @@ class TacticalHUD:
 
         ctrl_frame = tk.Frame(top_bar, bg="#000000")
         ctrl_frame.pack(side="right")
+
+        self.btn_projector_system = tk.Button(
+            ctrl_frame,
+            text="📽 3D PROJECTOR",
+            font=("Consolas", 8, "bold"),
+            fg="#ffd700",
+            bg="#1f1402",
+            activebackground="#ffd700",
+            activeforeground="#000",
+            relief="flat",
+            padx=8,
+            pady=2,
+            command=self.launch_3d_projector
+        )
+        self.btn_projector_system.pack(side="left", padx=4)
 
         self.btn_fullscreen = tk.Button(
             ctrl_frame,
@@ -1140,6 +1162,7 @@ class TacticalHUD:
         try:
             self.root.mainloop()
         finally:
+            listener.stop_wake_word_daemon()
             hud_controller.unregister_hud_instance()
             global_hotkey.stop()
             audio_visualizer.stop()

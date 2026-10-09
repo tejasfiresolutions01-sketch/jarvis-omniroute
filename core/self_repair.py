@@ -406,7 +406,12 @@ class SelfRepairEngine:
             # 4. Windows Working Set compaction
             if sys.platform == "win32":
                 try:
-                    ctypes.windll.psapi.EmptyWorkingSet(ctypes.windll.kernel32.GetCurrentProcess())
+                    kernel32 = ctypes.windll.kernel32
+                    psapi = ctypes.windll.psapi
+                    kernel32.GetCurrentProcess.restype = ctypes.c_void_p
+                    psapi.EmptyWorkingSet.argtypes = [ctypes.c_void_p]
+                    psapi.EmptyWorkingSet.restype = ctypes.c_int
+                    psapi.EmptyWorkingSet(kernel32.GetCurrentProcess())
                 except Exception:
                     pass
 

@@ -131,8 +131,8 @@ class HologramSentinel:
             except Exception as e:
                 print(f"[Holographic Sentinel Warning]: Error elevating HUD window: {e}")
 
-        # In headless or non-GUI mode, do not spawn GUI processes
-        if "--headless" in sys.argv:
+        # In headless mode, do not spawn GUI processes
+        if "--headless" in sys.argv or os.environ.get("JARVIS_HEADLESS") == "1":
             return False
 
         # If HUD process is already spawned and active, avoid creating duplicates

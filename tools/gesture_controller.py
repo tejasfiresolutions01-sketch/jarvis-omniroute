@@ -163,6 +163,23 @@ class SpatialGestureEngine:
         elif gesture == "fist":
             hud_controller.reset_3d_view()
             return "Spatial Fist: Reset 3D Hologram perspective to default."
+        # Also synchronize with 3D Holographic Projector System if active
+        try:
+            from core.projector_system import projector_system
+            if projector_system.is_projector_open():
+                if gesture == "swipe_right":
+                    projector_system.rotate_model(delta_yaw=0.6, delta_pitch=0.0)
+                elif gesture == "swipe_left":
+                    projector_system.rotate_model(delta_yaw=-0.6, delta_pitch=0.0)
+                elif gesture == "swipe_up":
+                    projector_system.rotate_model(delta_yaw=0.0, delta_pitch=0.4)
+                elif gesture == "swipe_down":
+                    projector_system.rotate_model(delta_yaw=0.0, delta_pitch=-0.4)
+                elif gesture == "open_palm":
+                    projector_system.toggle_auto_spin(False)
+        except Exception:
+            pass
+
         return f"Gesture '{gesture}' detected."
 
     def start_tracking_daemon(self, camera_index: int = 0, callback: Optional[Callable[[str, Dict[str, Any]], None]] = None):
