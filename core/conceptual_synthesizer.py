@@ -79,9 +79,15 @@ class ConceptualSynthesizer:
 
         # Computing & Architecture
         "cpu": "The central processing unit features a modest count of exceptionally powerful cores optimized for serial computation, rapid clock frequencies, and complex branching logic.",
+        "central processing unit": "The central processing unit features a modest count of exceptionally powerful cores optimized for serial computation, rapid clock frequencies, and complex branching logic.",
         "gpu": "The graphics processing unit houses thousands of smaller, streamlined cores engineered for massive parallel mathematical throughput, making it ideal for rendering and neural matrix multiplications.",
+        "graphics processing unit": "The graphics processing unit houses thousands of smaller, streamlined cores engineered for massive parallel mathematical throughput, making it ideal for rendering and neural matrix multiplications.",
         "ram": "Random-access memory is ultra-fast volatile semiconductor storage that holds active operating system instructions and application working sets for immediate processor execution.",
+        "random-access memory": "Random-access memory is ultra-fast volatile semiconductor storage that holds active operating system instructions and application working sets for immediate processor execution.",
+        "random access memory": "Random-access memory is ultra-fast volatile semiconductor storage that holds active operating system instructions and application working sets for immediate processor execution.",
         "rom": "Read-only memory is non-volatile permanent semiconductor storage that preserves foundational startup firmware such as the BIOS even when powered down.",
+        "read-only memory": "Read-only memory is non-volatile permanent semiconductor storage that preserves foundational startup firmware such as the BIOS even when powered down.",
+        "read only memory": "Read-only memory is non-volatile permanent semiconductor storage that preserves foundational startup firmware such as the BIOS even when powered down.",
         "compiler": "A compiler translates high-level human-readable source code in its entirety into native binary machine instructions prior to execution, producing optimal execution velocity.",
         "interpreter": "An interpreter reads and executes source code instructions sequentially line by line at runtime, offering interactive flexibility at the expense of computational speed.",
         "process": "A process is an isolated operating system execution context possessing its own dedicated virtual address space, file handles, and security tokens.",

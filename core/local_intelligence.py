@@ -229,11 +229,11 @@ class LocalIntelligence:
                 return True, summary
 
         # System Hardware Vitals (CPU, RAM, Disk)
-        if any(p in clean_lower for p in [
-            "system vitals", "hardware vitals", "hardware status", "vitals",
+        if (clean_lower == "vitals" or any(p in clean_lower for p in [
+            "system vitals", "hardware vitals", "hardware status",
             "cpu usage", "cpu status", "ram usage", "ram status", "memory status",
             "memory usage", "disk space", "storage status", "disk status"
-        ]):
+        ])) and not any(s in clean_lower for s in ["screen", "display", "monitor"]):
             import psutil
             cpu = psutil.cpu_percent(interval=0.1)
             mem = psutil.virtual_memory()
@@ -336,12 +336,25 @@ class LocalIntelligence:
         # Active IDE Co-Pilot & Visual Screen Diagnostics
         if any(p in clean_lower for p in [
             "check my code", "check code for errors", "diagnose active window",
-            "diagnose screen", "diagnose screen for errors", "check screen for errors",
+            "diagnose screen for errors", "check screen for errors",
             "ide copilot", "ide co-pilot", "inspect active window", "code copilot"
         ]):
             from core.vision_copilot import vision_copilot
             diag_res = vision_copilot.diagnose_current_screen()
             return True, diag_res
+
+        # Multi-Modal Vision Perception & Screen Comprehension
+        if any(p in clean_lower for p in [
+            "what is on my screen", "what's on my screen", "whats on my screen",
+            "describe screen", "describe my screen", "inspect display", "inspect screen",
+            "diagnose screen", "analyze screen", "analyze display", "screen vitals", "display vitals",
+            "screen theme", "is screen dark mode", "is display dark mode",
+            "read text on screen", "read screen text", "read visible text"
+        ]) or bool(re.search(r"\b(?:find|where is|locate)\s+(?:the\s+)?button\b", clean_lower)):
+            from tools.vision_tools import comprehend_screen
+            c_res = comprehend_screen(query=prompt)
+            return True, c_res["speech"]
+
 
         # Canary Sandbox & Latency Immune System Status
         if any(p in clean_lower for p in [
