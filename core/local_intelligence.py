@@ -678,6 +678,30 @@ class LocalIntelligence:
             return True, nurture_engine.format_voice_summary()
 
         # ─────────────────────────────────────────────────────────────────────
+        # Skill 6: Social Media Publishing & Multi-Platform Dispatch
+        # ─────────────────────────────────────────────────────────────────────
+        if any(p in clean_lower for p in ["social media status", "social queue status", "social publishing status"]):
+            from tools.social_media_agent import social_media_agent
+            st = social_media_agent.get_status()
+            keys_info = ", ".join([f"{k}: {'Configured' if v else 'Free Intent Mode'}" for k, v in st["api_keys_configured"].items()])
+            return True, f"Social media publisher online. Supported platforms: {', '.join(st['supported_platforms'])}. Modes: {keys_info}. Logged dispatches: {st['history_count']}."
+
+        social_post_match = re.match(r"^(?:post to|share on|publish to|send to)\s+(twitter|x|linkedin|facebook|meta|whatsapp|reddit)\s*(?:[:\-])?\s+(.+)$", clean, re.IGNORECASE)
+        if social_post_match:
+            platform = social_post_match.group(1).strip()
+            content = social_post_match.group(2).strip()
+            from tools.social_media_agent import social_media_agent
+            res = social_media_agent.publish(platform=platform, text=content)
+            return True, res["message"]
+
+        tweet_match = re.match(r"^(?:tweet|post tweet)\s*(?:[:\-])?\s+(.+)$", clean, re.IGNORECASE)
+        if tweet_match:
+            content = tweet_match.group(1).strip()
+            from tools.social_media_agent import social_media_agent
+            res = social_media_agent.publish(platform="twitter", text=content)
+            return True, res["message"]
+
+        # ─────────────────────────────────────────────────────────────────────
         # 2. Application, Folder & Script Launching
         # ─────────────────────────────────────────────────────────────────────
         folder_match = re.match(r"^(?:open|explore|show)\s+(?:the\s+)?(?:folder|directory)\s+(.+)$", clean_lower)
