@@ -742,6 +742,47 @@ class LocalIntelligence:
             return True, f"Fault-tolerant execution sentinel online. Success rate: {st['success_rate']}%. Total tracked dispatches: {st['total_executions']}. Circuit states: {st['circuit_states']}."
 
         # ─────────────────────────────────────────────────────────────────────
+        # Skill 10: Autonomous Coding AI & Engineering Skills
+        # ─────────────────────────────────────────────────────────────────────
+        if any(p in clean_lower for p in ["coding ai status", "coding skills status", "coding status"]):
+            from tools.coding_agent import coding_agent
+            st = coding_agent.get_status()
+            return True, f"Coding AI online. Supported languages: {', '.join(st['supported_languages'][:6])}... AST Validation: {st['ast_validation']}. Security Scanner: {st['security_scanner']}. Total audits: {st['total_audits_recorded']}."
+
+        if any(p in clean_lower for p in ["codebase metrics", "code metrics"]):
+            from tools.coding_agent import coding_agent
+            m = coding_agent.get_codebase_metrics()
+            mt = m["metrics"]
+            return True, f"Codebase metrics: {mt['python_files']} Python files, {mt['test_files']} test files, {mt['total_lines']} total lines of code across project."
+
+        code_gen_match = re.match(r"^(?:generate code|write code|create script|author code)\s*(?:for|to)?\s*(.+)$", clean, re.IGNORECASE)
+        if code_gen_match:
+            spec = code_gen_match.group(1).strip()
+            from tools.coding_agent import coding_agent
+            res = coding_agent.generate_code(prompt=spec)
+            syntax_stat = "Validated via AST" if res["syntax_valid"] else f"Warning: {res['syntax_error']}"
+            return True, f"Code generated successfully ({res['model_used']}). Syntax: {syntax_stat}.\n```python\n{res['extracted_code']}\n```"
+
+        code_rev_match = re.match(r"^(?:review code|analyze code|audit code|inspect code)\s+(?:for\s+)?(.+)$", clean, re.IGNORECASE)
+        if code_rev_match:
+            target_f = code_rev_match.group(1).strip()
+            from tools.coding_agent import coding_agent
+            res = coding_agent.review_code(target_f)
+            if not res.get("success"):
+                return True, f"Code audit failed: {res.get('error')}"
+            findings_summary = f"{res['findings_count']} issues flagged" if res['findings_count'] else "Zero security concerns identified"
+            return True, f"Code review for {res['file_name']} complete. Quality Score: {res['quality_score']}/100. Docstring coverage: {res['docstring_coverage_pct']}%. {findings_summary}."
+
+        test_gen_match = re.match(r"^(?:generate tests|create tests|write tests)\s+for\s+(.+)$", clean, re.IGNORECASE)
+        if test_gen_match:
+            target_f = test_gen_match.group(1).strip()
+            from tools.coding_agent import coding_agent
+            res = coding_agent.generate_tests_for_file(target_f)
+            if not res.get("success"):
+                return True, f"Test generation failed: {res.get('error')}"
+            return True, f"Generated automated unit test suite for {res['target_module']}. Detected {len(res['detected_functions'])} functions and {len(res['detected_classes'])} classes."
+
+        # ─────────────────────────────────────────────────────────────────────
         # 2. Application, Folder & Script Launching
         # ─────────────────────────────────────────────────────────────────────
         folder_match = re.match(r"^(?:open|explore|show)\s+(?:the\s+)?(?:folder|directory)\s+(.+)$", clean_lower)

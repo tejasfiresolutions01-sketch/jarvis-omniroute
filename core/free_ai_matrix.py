@@ -368,6 +368,33 @@ class FreeAIMatrix:
         self.omniroute_api_key = config.OMNIROUTE_API_KEY
         self.timeout = 7.0
 
+    def chat_completion(self, model: str, messages: List[Dict[str, str]], timeout: float = 7.0) -> Optional[Dict[str, Any]]:
+        """Standard chat completion endpoint wrapper routing through OmniRoute and free-tier fallbacks."""
+        system_prompt = ""
+        user_prompt = ""
+        for m in messages:
+            if m.get("role") == "system":
+                system_prompt = m.get("content", "")
+            elif m.get("role") == "user":
+                user_prompt = m.get("content", "")
+
+        content = self._call_omniroute(model, user_prompt, system_prompt=system_prompt)
+        if not content:
+            content, _ = self.query_auto(user_prompt)
+
+        if content:
+            return {
+                "choices": [
+                    {
+                        "message": {
+                            "role": "assistant",
+                            "content": content
+                        }
+                    }
+                ]
+            }
+        return None
+
     # ─────────────────────────────────────────────────────────────────────────
     # Business Enterprise AI Operations
     # ─────────────────────────────────────────────────────────────────────────
