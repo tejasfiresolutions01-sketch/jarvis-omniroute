@@ -252,6 +252,39 @@ class LocalIntelligence:
         ]):
             return True, "Understood, sir. All marketing campaigns, cold outreach sequences, follow-up scripts, and business documents are strictly configured to run exclusively in English. No other language will be used."
 
+        # Commercial Quotations & Multi-Channel Sales Proposals
+        quote_match = re.match(r"^(?:generate|create|prepare|draft|make|compile)\s+(?:a\s+)?(?:commercial\s+)?(?:quotation|quote|proposal)\s+(?:for\s+)?(.+)$", clean_lower)
+        if quote_match:
+            from tools.quotation_engine import quotation_engine
+            target_entity = quote_match.group(1).strip()
+            corridor = "Ambattur"
+            for c in ["ambattur", "sriperumbudur", "oragadam", "guindy", "maraimalai nagar"]:
+                if c in target_entity:
+                    corridor = c.title()
+                    break
+            quote_data = quotation_engine.create_quotation(
+                client_name=target_entity.title(),
+                facility_location=f"{corridor} Industrial Corridor",
+                corridor=corridor
+            )
+            return True, quotation_engine.format_voice_summary(quote_data)
+
+        # Multi-Channel Sales Outreach Stack
+        outreach_match = re.match(r"^(?:generate|create|prepare|launch|run)\s+(?:commercial\s+)?(?:outreach|sales\s+outreach|campaign\s+and\s+quote)\s+(?:for\s+)?(.+)$", clean_lower)
+        if outreach_match:
+            from tools.digital_marketing_suite import marketing_suite
+            target_entity = outreach_match.group(1).strip()
+            corridor = "Ambattur"
+            for c in ["ambattur", "sriperumbudur", "oragadam", "guindy", "maraimalai nagar"]:
+                if c in target_entity:
+                    corridor = c.title()
+                    break
+            stack = marketing_suite.execute_commercial_outreach_stack(
+                client_name=target_entity.title(),
+                corridor=corridor
+            )
+            return True, stack["voice_summary"]
+
         # Monthly Business Scan
         if any(p in clean_lower for p in [
             "scan for new business", "monthly business scan", "scan new business",

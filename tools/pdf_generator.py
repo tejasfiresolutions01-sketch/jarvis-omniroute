@@ -256,6 +256,118 @@ class PDFGenerator:
         doc.build(story, canvasmaker=NumberedCanvas)
         return pdf_path
 
+    def generate_quotation_pdf(self, quote_data: dict, filename: Optional[str] = None) -> Path:
+        """Renders an executive, publication-grade commercial quotation PDF."""
+        quote_id = quote_data.get("quote_id", "TFS-QUOTE")
+        if not filename:
+            filename = f"quotation_{quote_id}.pdf"
+        if not filename.endswith(".pdf"):
+            filename += ".pdf"
+
+        pdf_path = self.output_dir / filename
+        doc = SimpleDocTemplate(
+            str(pdf_path),
+            pagesize=letter,
+            leftMargin=40,
+            rightMargin=40,
+            topMargin=50,
+            bottomMargin=55
+        )
+
+        story = []
+        # Header / Title
+        story.append(Paragraph("TEJAS FIRE SOLUTIONS // STARK DEFENSE", self._styles["StarkTitle"]))
+        sub_text = f"Official Commercial Quotation &bull; Ref: <b>{quote_id}</b> &bull; Date: {quote_data.get('date', datetime.now().strftime('%Y-%m-%d'))}"
+        story.append(Paragraph(sub_text, self._styles["StarkSubtitle"]))
+        story.append(HRFlowable(width="100%", thickness=1.5, color=colors.HexColor("#007ACC"), spaceBefore=2, spaceAfter=8))
+
+        # Client & Project Metadata Box
+        client_name = quote_data.get("client_name", "Valued Enterprise Client")
+        location = quote_data.get("facility_location", "Chennai Industrial Corridor")
+        validity = quote_data.get("validity_days", 30)
+
+        meta_table_data = [
+            [
+                Paragraph(f"<b>CLIENT:</b> {client_name}<br/><b>FACILITY:</b> {location}", self._styles["StarkBody"]),
+                Paragraph(f"<b>VALIDITY:</b> {validity} Days<br/><b>COMPLIANCE:</b> IS 2190:2010 Standards", self._styles["StarkBody"])
+            ]
+        ]
+        meta_table = Table(meta_table_data, colWidths=[266, 266])
+        meta_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor("#F4F6F9")),
+            ('BOX', (0, 0), (-1, -1), 0.8, colors.HexColor("#D0D7DE")),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('LEFTPADDING', (0, 0), (-1, -1), 8),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+        ]))
+        story.append(meta_table)
+        story.append(Spacer(1, 10))
+
+        # Line Items Table
+        story.append(Paragraph("<b>SCHEDULE OF SERVICES & FIRE PROTECTION HARDWARE:</b>", self._styles["StarkH2"]))
+        story.append(Spacer(1, 4))
+
+        headers = ["Item / Description", "Qty", "Rate (INR)", "Amount (INR)"]
+        table_rows = [headers]
+
+        for it in quote_data.get("items", []):
+            desc = it.get("desc", it.get("description", "Service Item"))
+            qty = str(it.get("qty", it.get("quantity", 1)))
+            rate = f"{float(it.get('rate', it.get('unit_rate', 0.0))):,.2f}"
+            amt = f"{float(it.get('amount', it.get('total', 0.0))):,.2f}"
+            table_rows.append([Paragraph(desc, self._styles["StarkBody"]), qty, rate, amt])
+
+        # Summary Rows
+        subtotal = float(quote_data.get("subtotal", 0.0))
+        discount_amt = float(quote_data.get("discount_amt", 0.0))
+        taxable = float(quote_data.get("taxable_amount", subtotal - discount_amt))
+        gst_amt = float(quote_data.get("gst_amount", 0.0))
+        grand_total = float(quote_data.get("grand_total", taxable + gst_amt))
+
+        table_rows.append(["Subtotal", "", "", f"{subtotal:,.2f}"])
+        if discount_amt > 0:
+            table_rows.append(["Corporate Discount", "", "", f"- {discount_amt:,.2f}"])
+        table_rows.append(["Taxable Value", "", "", f"{taxable:,.2f}"])
+        table_rows.append(["GST (CGST 9% + SGST 9% / 18%)", "", "", f"{gst_amt:,.2f}"])
+        table_rows.append(["GRAND TOTAL (INR)", "", "", f"INR {grand_total:,.2f}"])
+
+        item_table = Table(table_rows, colWidths=[280, 50, 92, 110])
+        ts = [
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#0B192C")),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 9),
+            ('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
+            ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#D0D7DE")),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+            ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+            ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor("#EBF3FA")),
+            ('TEXTCOLOR', (0, -1), (-1, -1), colors.HexColor("#0B192C")),
+        ]
+        item_table.setStyle(TableStyle(ts))
+        story.append(item_table)
+        story.append(Spacer(1, 10))
+
+        # Terms and Compliance
+        story.append(Paragraph("<b>COMPLIANCE DECLARATION & TERMS OF SERVICE:</b>", self._styles["StarkH2"]))
+        terms = [
+            f"&bull; <b>Standards:</b> {quote_data.get('compliance_standards', 'IS 2190:2010 Code of Practice for Selection, Installation & Maintenance.')}",
+            f"&bull; <b>Certification:</b> OEM Hydrostatic proof pressure test certificates and PESO approval stickers included.",
+            f"&bull; <b>Payment Terms:</b> {quote_data.get('payment_terms', '30 Days net from delivery of serviced units.')}",
+            f"&bull; <b>Warranty:</b> {quote_data.get('warranty', '12 Months comprehensive warranty on refilled agents and spare parts.')}"
+        ]
+        for term in terms:
+            story.append(Paragraph(term, self._styles["StarkBody"]))
+
+        story.append(Spacer(1, 8))
+        story.append(Paragraph("<b>Authorized Signature:</b> Tejas Fire Solutions Technical Operations Directorate &bull; J.A.R.V.I.S. Autonomous Matrix", self._styles["StarkSubtitle"]))
+
+        doc.build(story, canvasmaker=NumberedCanvas)
+        return pdf_path
+
     def convert_markdown_file_to_pdf(self, md_path: Path) -> Path:
         """Converts an existing .md file directly to .pdf."""
         p = Path(md_path)
@@ -269,3 +381,4 @@ class PDFGenerator:
 
 # Global singleton
 pdf_generator = PDFGenerator()
+
