@@ -859,6 +859,201 @@ class LocalIntelligence:
             return True, f"Project verification for {res['directory']}: Health Score {res['health_score']}/100 ({prod_status}). Python files: {res['python_files_count']}. Tests passed: {res['tests_passed']}."
 
         # ─────────────────────────────────────────────────────────────────────
+        # Skill 12: Full-Stack & DevOps Engineering Suite
+        # ─────────────────────────────────────────────────────────────────────
+        if any(p in clean_lower for p in ["fullstack devops status", "devops status", "fullstack status", "full stack status"]):
+            from tools.fullstack_devops_agent import fullstack_devops_agent
+            st = fullstack_devops_agent.get_status()
+            return True, f"Fullstack & DevOps Suite online. Status: {st['status']}. Frontend: {', '.join(st['frontend_support'])}. Backend: {', '.join(st['backend_support'])}. DevOps: {', '.join(st['devops_support'])}."
+
+        fs_comp_match = re.match(r"^(?:generate|create)\s+frontend\s+component\s+([a-zA-Z0-9_\-]+)(?:\s+(?:as|using|framework)\s+(react|jsx|tsx|vanilla))?$", clean, re.IGNORECASE)
+        if fs_comp_match:
+            c_name = fs_comp_match.group(1).strip()
+            c_fw = fs_comp_match.group(2) or "vanilla"
+            from tools.fullstack_devops_agent import fullstack_devops_agent
+            res = fullstack_devops_agent.generate_frontend_component(c_name, framework=c_fw)
+            return True, f"Frontend component '{res['component_name']}' ({res['framework'].upper()}) generated at {res['saved_path']}. Preview ready."
+
+        fs_svc_match = re.match(r"^(?:generate|create)\s+backend\s+service\s+([a-zA-Z0-9_\-]+)(?:\s+(?:as|framework)\s+(fastapi|flask))?$", clean, re.IGNORECASE)
+        if fs_svc_match:
+            s_name = fs_svc_match.group(1).strip()
+            s_fw = fs_svc_match.group(2) or "fastapi"
+            from tools.fullstack_devops_agent import fullstack_devops_agent
+            res = fullstack_devops_agent.generate_backend_service(s_name, framework=s_fw)
+            return True, f"Backend microservice '{res['service_name']}' ({res['framework'].upper()}) scaffolded at {res['saved_path']} with endpoints: {', '.join(res['endpoints'])}."
+
+        fs_schema_match = re.match(r"^(?:generate|create)\s+(?:database|db)\s+schema\s+([a-zA-Z0-9_\-]+)$", clean, re.IGNORECASE)
+        if fs_schema_match:
+            sc_name = fs_schema_match.group(1).strip()
+            from tools.fullstack_devops_agent import fullstack_devops_agent
+            res = fullstack_devops_agent.generate_database_schema(sc_name)
+            return True, f"Relational database schema for '{res['entity']}' generated at {res['saved_path']} with tables: {', '.join(res['tables'])}."
+
+        fs_docker_match = re.match(r"^(?:generate|create)\s+dockerfile\s+([a-zA-Z0-9_\-]+)(?:\s+(?:for|app type)\s+(python|node))?$", clean, re.IGNORECASE)
+        if fs_docker_match:
+            d_name = fs_docker_match.group(1).strip()
+            d_type = fs_docker_match.group(2) or "python"
+            from tools.fullstack_devops_agent import fullstack_devops_agent
+            res = fullstack_devops_agent.generate_dockerfile(d_name, app_type=d_type)
+            return True, f"Multi-stage Dockerfile generated for {res['app_name']} ({res['app_type']}) at {res['saved_path']}."
+
+        fs_compose_match = re.match(r"^(?:generate|create)\s+docker[\s\-]?compose\s+([a-zA-Z0-9_\-]+)$", clean, re.IGNORECASE)
+        if fs_compose_match:
+            dc_name = fs_compose_match.group(1).strip()
+            from tools.fullstack_devops_agent import fullstack_devops_agent
+            res = fullstack_devops_agent.generate_docker_compose(dc_name)
+            return True, f"Docker Compose multi-service architecture scaffolded for {res['project_name']} at {res['saved_path']}. Services: {', '.join(res['services'])}."
+
+        fs_ci_match = re.match(r"^(?:generate|create)\s+(?:ci|github\s+actions)\s+(?:workflow|pipeline)\s+([a-zA-Z0-9_\-]+)$", clean, re.IGNORECASE)
+        if fs_ci_match:
+            ci_name = fs_ci_match.group(1).strip()
+            from tools.fullstack_devops_agent import fullstack_devops_agent
+            res = fullstack_devops_agent.generate_github_actions_ci(ci_name)
+            return True, f"GitHub Actions CI workflow generated for {res['project_name']} at {res['saved_path']}."
+
+        fs_nginx_match = re.match(r"^(?:generate|create)\s+nginx\s+config\s+([a-zA-Z0-9_\.\-]+)$", clean, re.IGNORECASE)
+        if fs_nginx_match:
+            ng_domain = fs_nginx_match.group(1).strip()
+            from tools.fullstack_devops_agent import fullstack_devops_agent
+            res = fullstack_devops_agent.generate_nginx_config(ng_domain)
+            return True, f"Nginx reverse-proxy and SSL termination profile configured for {res['domain']} at {res['saved_path']}."
+
+        ai_site_match = re.match(r"^(?:build|generate|create)\s+(?:ai\s+)?website\s+([a-zA-Z0-9_\-]+)(?:\s+(?:about|topic)\s+(.+?))?(?:\s+(?:with\s+ai|persona|assistant)\s+(.+))?$", clean, re.IGNORECASE)
+        if ai_site_match:
+            site_n = ai_site_match.group(1).strip()
+            site_t = ai_site_match.group(2) or "Autonomous Web Experience"
+            site_p = ai_site_match.group(3) or "J.A.R.V.I.S. Core"
+            from tools.fullstack_devops_agent import fullstack_devops_agent
+            res = fullstack_devops_agent.generate_ai_powered_website(site_name=site_n, site_topic=site_t, ai_persona=site_p)
+            return True, f"AI-Powered Responsive Website '{res['site_name']}' generated at {res['directory']}. Includes floating interactive AI Chatbot ({res['ai_persona']}). Open: {res['url']}."
+
+        # ─────────────────────────────────────────────────────────────────────
+        # Skill 13: Media Studio & Creative Automation Suite
+        # ─────────────────────────────────────────────────────────────────────
+        if any(p in clean_lower for p in ["media studio status", "photo editing status", "video editing status"]):
+            from tools.media_studio_agent import media_studio_agent
+            st = media_studio_agent.get_status()
+            return True, f"Media Studio online. Status: {st['status']}. OpenCV: {st['opencv_version']}. Supported filters: {', '.join(st['supported_filters'])}. Media output: {st['media_output_directory']}."
+
+        filter_photo_match = re.match(r"^(?:apply filter|photo filter)\s+([a-zA-Z0-9_\-]+)\s+to\s+(?:photo|image)\s+(.+)$", clean, re.IGNORECASE)
+        if filter_photo_match:
+            f_name = filter_photo_match.group(1).strip()
+            p_path = filter_photo_match.group(2).strip()
+            from tools.media_studio_agent import media_studio_agent
+            res = media_studio_agent.edit_photo(image_path=p_path, action="filter", params={"filter": f_name})
+            if not res.get("success"):
+                return True, f"Photo filter failed: {res.get('error')}"
+            return True, f"Filter '{f_name}' applied to photo. Rendered output: {res['output_path']}."
+
+        watermark_photo_match = re.match(r"^(?:watermark photo|watermark image)\s+(.+?)\s+(?:with text|text|with)\s+(.+)$", clean, re.IGNORECASE)
+        if watermark_photo_match:
+            p_path = watermark_photo_match.group(1).strip()
+            w_text = watermark_photo_match.group(2).strip()
+            from tools.media_studio_agent import media_studio_agent
+            res = media_studio_agent.edit_photo(image_path=p_path, action="watermark", params={"text": w_text})
+            if not res.get("success"):
+                return True, f"Photo watermark failed: {res.get('error')}"
+            return True, f"Watermark '{w_text}' applied to photo. Rendered output: {res['output_path']}."
+
+        inspect_video_match = re.match(r"^(?:inspect video|analyze video)\s+(.+)$", clean, re.IGNORECASE)
+        if inspect_video_match:
+            v_path = inspect_video_match.group(1).strip()
+            from tools.media_studio_agent import media_studio_agent
+            res = media_studio_agent.inspect_video(video_path=v_path)
+            if not res.get("success"):
+                return True, f"Video inspection failed: {res.get('error')}"
+            return True, f"Video {res['video_name']}: {res['resolution']} at {res['fps']} FPS. Total frames: {res['total_frames']} ({res['duration_seconds']}s)."
+
+        extract_frames_match = re.match(r"^(?:extract video frames|extract frames)\s+(.+?)(?:\s+(?:count|num)\s+(\d+))?$", clean, re.IGNORECASE)
+        if extract_frames_match:
+            v_path = extract_frames_match.group(1).strip()
+            f_count = int(extract_frames_match.group(2) or 5)
+            from tools.media_studio_agent import media_studio_agent
+            res = media_studio_agent.extract_keyframes(video_path=v_path, max_frames=f_count)
+            if not res.get("success"):
+                return True, f"Frame extraction failed: {res.get('error')}"
+            return True, f"Extracted {res['frames_extracted']} keyframes from video to {res['output_dir']}."
+
+        ffmpeg_cmd_match = re.match(r"^(?:generate ffmpeg command|ffmpeg command)\s+(?:for\s+)?([a-zA-Z0-9_\-]+)\s+(?:on|for)\s+(.+)$", clean, re.IGNORECASE)
+        if ffmpeg_cmd_match:
+            ff_act = ffmpeg_cmd_match.group(1).strip()
+            ff_vid = ffmpeg_cmd_match.group(2).strip()
+            from tools.media_studio_agent import media_studio_agent
+            cmd = media_studio_agent.generate_ffmpeg_command(video_path=ff_vid, action=ff_act)
+            return True, f"Synthesized FFmpeg pipeline command:\n{cmd}"
+
+        # ─────────────────────────────────────────────────────────────────────
+        # Skill 14: Autonomous Device Controller & Computer-Use Engine
+        # ─────────────────────────────────────────────────────────────────────
+        if any(p in clean_lower for p in ["autonomous device status", "device controller status", "computer use status"]):
+            from tools.autonomous_device_controller import autonomous_device_controller
+            st = autonomous_device_controller.get_status()
+            return True, f"Autonomous Device Controller online. Status: {st['status']}. Resolution: {st['screen_resolution']}. Active window: {st['active_window']}. Capabilities: {', '.join(st['capabilities'][:3])}."
+
+        if any(p in clean_lower for p in ["capture screenshot", "take screenshot", "screenshot desktop", "capture screen"]):
+            from tools.autonomous_device_controller import autonomous_device_controller
+            res = autonomous_device_controller.capture_screen()
+            if not res.get("success"):
+                return True, f"Screenshot capture failed: {res.get('error')}"
+            return True, f"Screenshot captured successfully: {res['screenshot_path']} ({res['resolution']})."
+
+        if any(p in clean_lower for p in ["device vitals", "device controller vitals", "autonomous device vitals"]):
+            from tools.autonomous_device_controller import autonomous_device_controller
+            v = autonomous_device_controller.get_system_vitals()
+            top_p = ", ".join([f"{p['name']} ({p['cpu_pct']}%)" for p in v["top_processes"][:3]])
+            return True, f"Device Vitals: CPU {v['cpu_percent']}%, RAM {v['ram_percent']}% ({v['ram_used_gb']}/{v['ram_total_gb']} GB), Disk {v['disk_percent']}%. Top tasks: {top_p}."
+
+        auto_focus_match = re.match(r"^(?:focus window|bring up window|switch to window)\s+(.+)$", clean, re.IGNORECASE)
+        if auto_focus_match:
+            win_q = auto_focus_match.group(1).strip()
+            from tools.autonomous_device_controller import autonomous_device_controller
+            res = autonomous_device_controller.focus_window(win_q)
+            if not res.get("success"):
+                return True, f"Could not focus window '{win_q}': {res.get('error')}"
+            return True, f"Focused window: {res['window']['title']} (PID: {res['window']['pid']})."
+
+        auto_snap_match = re.match(r"^(?:snap window|snap)\s+(left|right|top|bottom|center|fullscreen)(?:\s+(?:for|window)\s+(.+))?$", clean, re.IGNORECASE)
+        if auto_snap_match:
+            snap_dir = auto_snap_match.group(1).strip()
+            snap_win = auto_snap_match.group(2)
+            from tools.autonomous_device_controller import autonomous_device_controller
+            res = autonomous_device_controller.snap_window(direction=snap_dir, query=snap_win)
+            if not res.get("success"):
+                return True, f"Window snap failed: {res.get('error')}"
+            b = res["bounds"]
+            return True, f"Window snapped {snap_dir}: ({b['x']}, {b['y']}, {b['width']}x{b['height']})."
+
+        auto_type_match = re.match(r"^(?:type text|type)\s+(.+)$", clean, re.IGNORECASE)
+        if auto_type_match:
+            text_to_type = auto_type_match.group(1).strip()
+            from tools.autonomous_device_controller import autonomous_device_controller
+            res = autonomous_device_controller.type_text(text_to_type)
+            return True, f"Dispatched {res['chars']} characters to active window."
+
+        auto_key_match = re.match(r"^press key\s+([a-zA-Z0-9_\-]+)$", clean, re.IGNORECASE)
+        if auto_key_match:
+            k_name = auto_key_match.group(1).strip()
+            from tools.autonomous_device_controller import autonomous_device_controller
+            res = autonomous_device_controller.press_key(k_name)
+            return True, f"Emulated keystroke: {res['key']}."
+
+        auto_hotkey_match = re.match(r"^press hotkey\s+(.+)$", clean, re.IGNORECASE)
+        if auto_hotkey_match:
+            raw_keys = auto_hotkey_match.group(1).strip()
+            keys_list = [k.strip() for k in re.split(r"[\s\+]+", raw_keys)]
+            from tools.autonomous_device_controller import autonomous_device_controller
+            res = autonomous_device_controller.press_hotkey(*keys_list)
+            return True, f"Executed hotkey combination: {' + '.join(res['keys'])}."
+
+        auto_click_match = re.match(r"^(?:click at|mouse click at)\s+(\d+)\s*,\s*(\d+)$", clean, re.IGNORECASE)
+        if auto_click_match:
+            cx = int(auto_click_match.group(1))
+            cy = int(auto_click_match.group(2))
+            from tools.autonomous_device_controller import autonomous_device_controller
+            res = autonomous_device_controller.mouse_click(x=cx, y=cy)
+            return True, f"Mouse clicked at coordinates ({res['x']}, {res['y']})."
+
+        # ─────────────────────────────────────────────────────────────────────
         # 2. Application, Folder & Script Launching
         # ─────────────────────────────────────────────────────────────────────
         folder_match = re.match(r"^(?:open|explore|show)\s+(?:the\s+)?(?:folder|directory)\s+(.+)$", clean_lower)
@@ -1150,6 +1345,13 @@ class LocalIntelligence:
             up_id = consensus_match.group(1).strip()
             from core.consensus_reviewer import consensus_reviewer
             rev = consensus_reviewer.review_upgrade_proposal(up_id)
+            return True, consensus_reviewer.format_review_summary(rev)
+
+        consensus_code_match = re.search(r"^(?:consensus review code|consensus review file|cross check code|cross-check code|review code artifact)\s+(.+)$", clean, re.IGNORECASE)
+        if consensus_code_match:
+            code_target = consensus_code_match.group(1).strip()
+            from core.consensus_reviewer import consensus_reviewer
+            rev = consensus_reviewer.review_code_artifact(code_target)
             return True, consensus_reviewer.format_review_summary(rev)
 
         # ─────────────────────────────────────────────────────────────────────

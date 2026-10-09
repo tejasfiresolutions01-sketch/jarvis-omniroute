@@ -77,7 +77,7 @@ class TestRAGAndConsensusReviewer(unittest.TestCase):
         self.assertEqual(res["item_id"], "MAJOR-1")
         self.assertGreaterEqual(res["consensus_score_pct"], 80.0)
         self.assertIn(res["overall_verdict"], ["STRONG_CONSENSUS_APPROVE", "MODERATE_CONSENSUS_APPROVE"])
-        self.assertEqual(len(res["evaluations"]), 4)
+        self.assertEqual(len(res["evaluations"]), 5)
 
         # Formatted summary contains permission gate notice
         summary = self.consensus.format_review_summary(res)
