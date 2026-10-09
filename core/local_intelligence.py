@@ -699,6 +699,17 @@ class LocalIntelligence:
             res = generate_executive_briefing()
             return True, res
 
+        # 5b. Unified System Orchestration & Executive Dashboard
+        if any(p in clean_lower for p in [
+            "orchestration briefing", "orchestration status", "master system status",
+            "system orchestration", "master briefing", "unified briefing",
+            "full system briefing", "orchestrator report", "executive dashboard"
+        ]):
+            from core.system_orchestration import system_orchestrator
+            res = system_orchestrator.generate_executive_briefing()
+            return True, res
+
+
         weather_match = re.search(r"\b(?:what is the weather|weather in|how is the weather|forecast for|temperature in)\s*(.+)?$", clean_lower)
         if weather_match or clean_lower in ["weather", "temperature", "atmospheric conditions"]:
             from tools.weather_tools import get_weather

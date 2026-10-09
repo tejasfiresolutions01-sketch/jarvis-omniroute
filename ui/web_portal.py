@@ -789,6 +789,19 @@ class PortalHandler(http.server.BaseHTTPRequestHandler):
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             self.wfile.write(json.dumps(smart_home.get_devices()).encode("utf-8"))
+        elif self.path in ["/dashboard", "/executive"]:
+            from core.system_orchestration import system_orchestrator
+            dash_html = system_orchestrator.get_executive_dashboard_html()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(dash_html.encode("utf-8"))
+        elif self.path == "/api/orchestration/dashboard":
+            from core.system_orchestration import system_orchestrator
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(system_orchestrator.get_executive_telemetry()).encode("utf-8"))
         else:
             self.send_response(404)
             self.end_headers()
