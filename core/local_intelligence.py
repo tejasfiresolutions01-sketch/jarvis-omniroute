@@ -782,6 +782,46 @@ class LocalIntelligence:
                 return True, f"Test generation failed: {res.get('error')}"
             return True, f"Generated automated unit test suite for {res['target_module']}. Detected {len(res['detected_functions'])} functions and {len(res['detected_classes'])} classes."
 
+        complexity_match = re.match(r"^(?:analyze complexity|code complexity|calculate complexity)\s+(?:for\s+)?(.+)$", clean, re.IGNORECASE)
+        if complexity_match:
+            target_f = complexity_match.group(1).strip()
+            from tools.coding_agent import coding_agent
+            res = coding_agent.analyze_complexity(target_f)
+            if not res.get("success"):
+                return True, f"Complexity analysis failed: {res.get('error')}"
+            return True, f"Complexity analysis for {res['file_name']}: {res['total_functions_analyzed']} functions analyzed. Average cyclomatic complexity: {res['average_complexity']}. High-risk functions: {res['high_risk_functions_count']}."
+
+        dead_code_match = re.match(r"^(?:scan dead code|scan unused imports|check unused imports)\s+(?:for\s+)?(.+)$", clean, re.IGNORECASE)
+        if dead_code_match:
+            target_f = dead_code_match.group(1).strip()
+            from tools.coding_agent import coding_agent
+            res = coding_agent.scan_dead_code(target_f)
+            if not res.get("success"):
+                return True, f"Dead code scan failed: {res.get('error')}"
+            unused_list = ", ".join([u["symbol"] for u in res["unused_imports"][:5]]) or "None"
+            return True, f"Dead code audit for {res['file_name']}: {res['total_imports']} imports scanned. {res['unused_imports_count']} unused imports detected: {unused_list}."
+
+        diagnose_match = re.match(r"^(?:diagnose error|diagnose bug|fix error|analyze traceback)\s*(?:[:\-])?\s+(.+)$", clean, re.DOTALL | re.IGNORECASE)
+        if diagnose_match:
+            err_text = diagnose_match.group(1).strip()
+            from tools.coding_agent import coding_agent
+            res = coding_agent.diagnose_and_patch_error(err_text)
+            return True, f"{res['diagnosis']}\nRecommended Remediation: {res['recommended_patch']}"
+
+        snippet_exec_match = re.match(r"^(?:execute snippet|run snippet|benchmark snippet)\s*(?:[:\-])?\s+(.+)$", clean, re.DOTALL | re.IGNORECASE)
+        if snippet_exec_match:
+            code_snip = snippet_exec_match.group(1).strip()
+            code_snip = re.sub(r"^```(?:python)?\s*", "", code_snip)
+            code_snip = re.sub(r"```$", "", code_snip).strip()
+            from tools.coding_agent import coding_agent
+            res = coding_agent.execute_code_snippet(code_snip)
+            if not res.get("success"):
+                return True, f"Execution failed: {res.get('error')}"
+            status_txt = "Passed (0 exit)" if res["passed"] else f"Failed (exit {res['return_code']})"
+            out_txt = f"\nOutput: {res['stdout']}" if res['stdout'] else ""
+            err_txt = f"\nError: {res['stderr']}" if res['stderr'] else ""
+            return True, f"Snippet execution {status_txt} in {res['duration_ms']}ms.{out_txt}{err_txt}"
+
         # ─────────────────────────────────────────────────────────────────────
         # 2. Application, Folder & Script Launching
         # ─────────────────────────────────────────────────────────────────────

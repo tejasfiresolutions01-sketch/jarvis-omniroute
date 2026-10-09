@@ -121,9 +121,91 @@ class MatrixSolver:
     def test_get_status(self):
         """Verifies coding agent status reporting."""
         status = self.agent.get_status()
-        self.assertEqual(status["status"], "ONLINE")
+        self.assertIn("ONLINE", status["status"])
         self.assertIn("python", status["supported_languages"])
         self.assertEqual(status["ast_validation"], "Active")
+        self.assertEqual(status["auto_diagnostician"], "Active")
+
+    def test_diagnose_and_patch_error(self):
+        """Verifies traceback parsing and root-cause diagnosis."""
+        traceback_sample = """Traceback (most recent call last):
+  File "tools/test_demo.py", line 42, in execute_action
+    val = self.missing_variable
+AttributeError: 'TestDemo' object has no attribute 'missing_variable'"""
+        res = self.agent.diagnose_and_patch_error(traceback_sample)
+        self.assertTrue(res["success"])
+        self.assertEqual(res["error_type"], "AttributeError")
+        self.assertEqual(res["line_number"], 42)
+        self.assertIn("missing_variable", res["error_message"])
+        self.assertIn("Attribute mismatch detected", res["recommended_patch"])
+
+    def test_analyze_complexity(self):
+        """Verifies cyclomatic complexity calculation across functions."""
+        sample_code = """
+def simple_fn():
+    return 1
+
+def complex_fn(a, b, c):
+    if a > 0:
+        for x in range(b):
+            if x % 2 == 0:
+                print(x)
+            elif x == 3:
+                break
+    elif c:
+        while True:
+            pass
+    return True
+"""
+        with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False, encoding="utf-8") as f:
+            f.write(sample_code)
+            tmp_path = f.name
+
+        try:
+            res = self.agent.analyze_complexity(tmp_path)
+            self.assertTrue(res["success"])
+            self.assertEqual(res["total_functions_analyzed"], 2)
+            fn_map = {f["name"]: f["complexity"] for f in res["functions"]}
+            self.assertEqual(fn_map["simple_fn"], 1)
+            self.assertGreater(fn_map["complex_fn"], 4)
+        finally:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+
+    def test_execute_code_snippet(self):
+        """Verifies sandboxed snippet execution and timing capture."""
+        code = "print('Hello from sandboxed J.A.R.V.I.S.')"
+        res = self.agent.execute_code_snippet(code, timeout=4.0)
+        self.assertTrue(res["success"])
+        self.assertTrue(res["passed"])
+        self.assertEqual(res["return_code"], 0)
+        self.assertIn("Hello from sandboxed J.A.R.V.I.S.", res["stdout"])
+        self.assertGreater(res["duration_ms"], 0)
+
+    def test_scan_dead_code(self):
+        """Verifies detection of unused imports."""
+        sample_code = """
+import os
+import sys
+import math
+
+print(os.getcwd())
+"""
+        with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False, encoding="utf-8") as f:
+            f.write(sample_code)
+            tmp_path = f.name
+
+        try:
+            res = self.agent.scan_dead_code(tmp_path)
+            self.assertTrue(res["success"])
+            self.assertEqual(res["total_imports"], 3)
+            unused_symbols = [u["symbol"] for u in res["unused_imports"]]
+            self.assertIn("sys", unused_symbols)
+            self.assertIn("math", unused_symbols)
+            self.assertNotIn("os", unused_symbols)
+        finally:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
 
     def test_local_intelligence_coding_directives(self):
         """Verifies voice/text directives in LocalIntelligence."""
@@ -153,6 +235,28 @@ class MatrixSolver:
         self.assertTrue(handled)
         self.assertIn("Generated automated unit test suite", msg)
 
+        # 6. Complexity Analysis
+        handled, msg = local_intelligence.evaluate_and_execute("analyze complexity tools/coding_agent.py")
+        self.assertTrue(handled)
+        self.assertIn("Complexity analysis for coding_agent.py", msg)
+
+        # 7. Dead Code Scan
+        handled, msg = local_intelligence.evaluate_and_execute("scan dead code tools/coding_agent.py")
+        self.assertTrue(handled)
+        self.assertIn("Dead code audit for coding_agent.py", msg)
+
+        # 8. Diagnose Error
+        handled, msg = local_intelligence.evaluate_and_execute('diagnose error File "app.py", line 10, in run\n    raise ValueError("Invalid parameter")\nValueError: Invalid parameter')
+        self.assertTrue(handled)
+        self.assertIn("Diagnosed ValueError", msg)
+
+        # 9. Execute Snippet
+        handled, msg = local_intelligence.evaluate_and_execute("run snippet print(40 + 2)")
+        self.assertTrue(handled)
+        self.assertIn("Snippet execution Passed", msg)
+        self.assertIn("42", msg)
+
 
 if __name__ == "__main__":
     unittest.main()
+
