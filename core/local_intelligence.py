@@ -702,6 +702,46 @@ class LocalIntelligence:
             return True, res["message"]
 
         # ─────────────────────────────────────────────────────────────────────
+        # Skill 7: Global 24/7 Telemetry Sentinel
+        # ─────────────────────────────────────────────────────────────────────
+        if any(p in clean_lower for p in ["global telemetry status", "telemetry sentinel status"]):
+            from tools.global_telemetry_sentinel import global_telemetry_sentinel
+            st = global_telemetry_sentinel.get_status()
+            return True, f"Global telemetry sentinel active: {st['active']}. Total streams monitored: {st['total_streams']} across categories {', '.join(st['stream_categories'])}. Unresolved critical alerts: {st['unresolved_alerts']}."
+
+        if any(p in clean_lower for p in ["world situation report", "global situation report", "breaking news briefing", "telemetry briefing"]):
+            from tools.global_telemetry_sentinel import global_telemetry_sentinel
+            return True, global_telemetry_sentinel.format_situation_report()
+
+        if any(p in clean_lower for p in ["scan global telemetry", "global telemetry scan", "check world telemetry"]):
+            from tools.global_telemetry_sentinel import global_telemetry_sentinel
+            res = global_telemetry_sentinel.scan_all_streams()
+            return True, f"Global telemetry scan complete, sir. Ingested {res['new_items_count']} fresh signals, surfacing {res['high_urgency_alerts_count']} high-urgency alerts."
+
+        # ─────────────────────────────────────────────────────────────────────
+        # Skill 8: Frontier Swarm Intelligence & Deep Reasoning Core
+        # ─────────────────────────────────────────────────────────────────────
+        if any(p in clean_lower for p in ["frontier intelligence status", "frontier swarm status"]):
+            from core.frontier_intelligence_core import frontier_intelligence_core
+            st = frontier_intelligence_core.get_status()
+            return True, f"Frontier swarm core online. Status: {st['swarm_status']}. Active domains: {', '.join(st['available_domains'])}. RAG grounded synthesis: True."
+
+        frontier_reason_match = re.match(r"^(?:frontier reasoning|frontier analysis|deep reasoning|frontier swarm)\s*(?:[:\-])?\s+(.+)$", clean, re.IGNORECASE)
+        if frontier_reason_match:
+            query = frontier_reason_match.group(1).strip()
+            from core.frontier_intelligence_core import frontier_intelligence_core
+            res = frontier_intelligence_core.synthesize_frontier_reasoning(query)
+            return True, res["response"]
+
+        # ─────────────────────────────────────────────────────────────────────
+        # Skill 9: Industrial Fault-Tolerant "Zero-Defect" Execution
+        # ─────────────────────────────────────────────────────────────────────
+        if any(p in clean_lower for p in ["fault tolerant status", "circuit breaker status", "executor reliability status"]):
+            from core.fault_tolerant_executor import fault_tolerant_executor
+            st = fault_tolerant_executor.get_status()
+            return True, f"Fault-tolerant execution sentinel online. Success rate: {st['success_rate']}%. Total tracked dispatches: {st['total_executions']}. Circuit states: {st['circuit_states']}."
+
+        # ─────────────────────────────────────────────────────────────────────
         # 2. Application, Folder & Script Launching
         # ─────────────────────────────────────────────────────────────────────
         folder_match = re.match(r"^(?:open|explore|show)\s+(?:the\s+)?(?:folder|directory)\s+(.+)$", clean_lower)
