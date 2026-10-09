@@ -233,6 +233,8 @@ class TacticalHUD:
     def set_3d_model(self, model_name: str):
         """Switches the active rotating 3D wireframe object."""
         self.active_3d_model = model_name
+        from ui.mesh_3d_engine import holographic_3d
+        holographic_3d.set_mesh(model_name)
         self._play_fx("target_lock")
         self.append_log("SYSTEM", f"Holographic 3D projection model shifted to: {model_name.upper()}.")
 
@@ -507,7 +509,8 @@ class TacticalHUD:
             ("🎭 HELMET", "helmet"),
             ("⚛ REACTOR", "reactor"),
             ("🌍 GLOBE", "globe"),
-            ("🧊 TESSERACT", "tesseract")
+            ("🧊 TESSERACT", "tesseract"),
+            ("✈ DRONE", "drone")
         ]
         for lbl, mid in models:
             b = tk.Button(
@@ -822,136 +825,21 @@ class TacticalHUD:
         return px, py, depth
 
     def _draw_3d_wireframe(self, canvas, cx, cy, t_style):
-        m = self.active_3d_model
+        from ui.mesh_3d_engine import holographic_3d
+        holographic_3d.yaw = self.model_yaw
+        holographic_3d.pitch = self.model_pitch
+        holographic_3d.scale = self.model_scale
+        holographic_3d.auto_spin = self.auto_spin
+        if holographic_3d.active_mesh.name.lower() != self.active_3d_model.lower():
+            holographic_3d.set_mesh(self.active_3d_model)
 
-        if m == "helmet":
-            # 3D Iron Man Mark-85 Helmet Wireframe
-            nodes = [
-                # Forehead / Crest (0..3)
-                (-40, 60, 20), (40, 60, 20), (25, 75, 10), (-25, 75, 10),
-                # Brow / Temple (4..7)
-                (-55, 30, 25), (55, 30, 25), (35, 35, 45), (-35, 35, 45),
-                # Left Eye (8..11)
-                (-32, 22, 48), (-12, 20, 52), (-14, 12, 50), (-30, 14, 46),
-                # Right Eye (12..15)
-                (12, 20, 52), (32, 22, 48), (30, 14, 46), (14, 12, 50),
-                # Nose Bridge & Mouth Plate (16..19)
-                (-10, 8, 54), (10, 8, 54), (8, -25, 52), (-8, -25, 52),
-                # Cheeks (20..23)
-                (-50, -5, 35), (50, -5, 35), (-45, -35, 25), (45, -35, 25),
-                # Jaw & Chin (24..27)
-                (-25, -55, 38), (25, -55, 38), (15, -65, 42), (-15, -65, 42),
-                # Back Cranium (28..31)
-                (-45, 50, -45), (45, 50, -45), (40, -40, -45), (-40, -40, -45)
-            ]
-            edges = [
-                # Crest
-                (0, 1), (1, 2), (2, 3), (3, 0),
-                # Temple & Brow
-                (0, 4), (1, 5), (4, 7), (5, 6), (7, 6),
-                # Brow to Eyes
-                (7, 8), (7, 9), (6, 12), (6, 13),
-                # Left Eye loop
-                (8, 9), (9, 10), (10, 11), (11, 8),
-                # Right Eye loop
-                (12, 13), (13, 14), (14, 15), (15, 12),
-                # Faceplate Center
-                (9, 16), (12, 17), (16, 17), (16, 19), (17, 18), (19, 18),
-                # Cheeks
-                (4, 20), (5, 21), (20, 22), (21, 23),
-                # Jaw to Chin
-                (22, 24), (23, 25), (24, 27), (25, 26), (27, 26),
-                # Cranium
-                (0, 28), (1, 29), (28, 29), (29, 30), (30, 31), (31, 28), (22, 31), (23, 30)
-            ]
-            eye_nodes = [8, 9, 10, 11, 12, 13, 14, 15]
+        energy = 0.0
+        try:
+            energy = audio_visualizer.get_energy()
+        except Exception:
+            pass
 
-        elif m == "reactor":
-            # Concentric 3D Rings & Arc Spokes
-            nodes = []
-            edges = []
-            # 3 Orthogonal Latitude Rings
-            for r_rad, r_y in [(60, 0), (45, 25), (45, -25), (25, 45), (25, -45)]:
-                start_idx = len(nodes)
-                for seg in range(12):
-                    ang = seg * (math.pi * 2 / 12)
-                    nodes.append((r_rad * math.cos(ang), r_y, r_rad * math.sin(ang)))
-                for seg in range(12):
-                    edges.append((start_idx + seg, start_idx + ((seg + 1) % 12)))
-
-            # Vertical Longitude Loop
-            v_start = len(nodes)
-            for seg in range(12):
-                ang = seg * (math.pi * 2 / 12)
-                nodes.append((0, 60 * math.cos(ang), 60 * math.sin(ang)))
-            for seg in range(12):
-                edges.append((v_start + seg, v_start + ((seg + 1) % 12)))
-
-            eye_nodes = []
-
-        elif m == "tesseract":
-            # 4D Hypercube (Inner & Outer cubes)
-            nodes = []
-            s_out = 55
-            s_in = 28
-            for z in [-s_out, s_out]:
-                for y in [-s_out, s_out]:
-                    for x in [-s_out, s_out]:
-                        nodes.append((x, y, z))
-            for z in [-s_in, s_in]:
-                for y in [-s_in, s_in]:
-                    for x in [-s_in, s_in]:
-                        nodes.append((x, y, z))
-
-            cube_edges = [
-                (0,1),(1,3),(3,2),(2,0),
-                (4,5),(5,7),(7,6),(6,4),
-                (0,4),(1,5),(2,6),(3,7)
-            ]
-            edges = list(cube_edges)
-            for e1, e2 in cube_edges:
-                edges.append((e1 + 8, e2 + 8))
-            for i in range(8):
-                edges.append((i, i + 8))
-            eye_nodes = []
-
-        else:  # "globe"
-            nodes = []
-            edges = []
-            for lat in [-40, -20, 0, 20, 40]:
-                r_lat = 58 * math.cos(math.radians(lat))
-                y_lat = 58 * math.sin(math.radians(lat))
-                start_idx = len(nodes)
-                for seg in range(12):
-                    ang = seg * (math.pi * 2 / 12)
-                    nodes.append((r_lat * math.cos(ang), y_lat, r_lat * math.sin(ang)))
-                for seg in range(12):
-                    edges.append((start_idx + seg, start_idx + ((seg + 1) % 12)))
-            eye_nodes = []
-
-        # Project points
-        projected = []
-        for x, y, z in nodes:
-            px, py, depth = self._project_3d(x, y, z, cx, cy)
-            projected.append((px, py, depth))
-
-        # Draw Edges
-        for i, j in edges:
-            x1, y1, d1 = projected[i]
-            x2, y2, d2 = projected[j]
-            # Color eyes in gold for helmet
-            if i in eye_nodes and j in eye_nodes:
-                edge_col = t_style["secondary"]
-                w = 2
-            else:
-                edge_col = t_style["primary"]
-                w = 1
-            canvas.create_line(x1, y1, x2, y2, fill=edge_col, width=w)
-
-        # Draw vertex node glowing points
-        for idx, (px, py, depth) in enumerate(projected):
-            node_col = t_style["secondary"] if idx in eye_nodes else t_style["primary"]
-            canvas.create_oval(px - 1.5, py - 1.5, px + 1.5, py + 1.5, fill=node_col, outline="")
+        holographic_3d.project_and_render(canvas, cx, cy, t_style, audio_energy=energy)
 
     # ─────────────────────────────────────────────────────────────────────────
     # ANIMATION LOOP (~25 FPS)
@@ -1021,7 +909,7 @@ class TacticalHUD:
             except Exception:
                 pass
 
-        self.root.after(40, self._animate_reactor)
+        self.root.after(16, self._animate_reactor)
 
     def _animate_spectrum(self):
         """Renders 24-Band Equalizer in Left Deck."""

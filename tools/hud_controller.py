@@ -31,7 +31,7 @@ _LOCK = threading.Lock()
 class HUDController:
     """Controls and synchronizes the J.A.R.V.I.S. Tactical Holographic HUD."""
 
-    VALID_MODELS = ["helmet", "reactor", "globe", "tesseract"]
+    VALID_MODELS = ["helmet", "reactor", "globe", "tesseract", "drone", "custom"]
 
     def __init__(self):
         self._active_hud = None
@@ -161,6 +161,13 @@ class HUDController:
 
             elif action == "cycle_palette":
                 self._active_hud.cycle_theme()
+
+            elif action == "load_mesh":
+                p = cmd.get("path")
+                if p:
+                    from ui.mesh_3d_engine import holographic_3d
+                    if holographic_3d.load_custom_file(p):
+                        self._active_hud.set_3d_model("custom")
         except Exception:
             pass
 
@@ -238,6 +245,9 @@ class HUDController:
 
     def cycle_palette(self) -> bool:
         return self.send_command("cycle_palette")
+
+    def load_custom_mesh(self, file_path: str) -> bool:
+        return self.send_command("load_mesh", path=str(file_path))
 
 
 hud_controller = HUDController()
