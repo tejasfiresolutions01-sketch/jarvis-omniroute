@@ -962,6 +962,57 @@ class LocalIntelligence:
             return True, upgrade_advisor.format_briefing(view_mode=mode)
 
         # ─────────────────────────────────────────────────────────────────────
+        # 5a-1b. Multi-Model Consensus Review & Cross-Verification Matrix
+        # ─────────────────────────────────────────────────────────────────────
+        consensus_match = re.search(r"^(?:consensus review upgrade|cross check upgrade|cross-check upgrade|review upgrade)\s+([a-zA-Z0-9\-_]+)$", clean, re.IGNORECASE)
+        if consensus_match:
+            up_id = consensus_match.group(1).strip()
+            from core.consensus_reviewer import consensus_reviewer
+            rev = consensus_reviewer.review_upgrade_proposal(up_id)
+            return True, consensus_reviewer.format_review_summary(rev)
+
+        # ─────────────────────────────────────────────────────────────────────
+        # 5a-1c. Local Knowledge Retrieval Engine & Document RAG Core
+        # ─────────────────────────────────────────────────────────────────────
+        if any(p in clean_lower for p in ["knowledge base status", "rag status", "knowledge base diagnostics", "document index status"]):
+            from core.rag_knowledge_engine import rag_knowledge_engine
+            st = rag_knowledge_engine.get_status()
+            docs_sample = ", ".join(st["documents"]) if st["documents"] else "None yet"
+            return True, f"Local Knowledge Base Status: {st['storage_status']}. Indexed documents: {st['indexed_documents_count']} ({st['total_semantic_chunks']} chunks, {st['total_text_volume_kb']} KB). Sample: {docs_sample}."
+
+        if any(p in clean_lower for p in ["clear knowledge base", "reset knowledge base", "wipe knowledge index"]):
+            from core.rag_knowledge_engine import rag_knowledge_engine
+            c = rag_knowledge_engine.clear_knowledge()
+            return True, f"Local knowledge base cleared, sir. Removed {c} vector memories."
+
+        index_file_match = re.search(r"^(?:index document|index file)\s+(.+)$", clean, re.IGNORECASE)
+        if index_file_match:
+            f_path = index_file_match.group(1).strip()
+            from core.rag_knowledge_engine import rag_knowledge_engine
+            ok, msg = rag_knowledge_engine.index_file(f_path)
+            return True, msg
+
+        index_dir_match = re.search(r"^(?:index folder|index directory|index docs)\s+(.+)$", clean, re.IGNORECASE)
+        if index_dir_match:
+            d_path = index_dir_match.group(1).strip()
+            from core.rag_knowledge_engine import rag_knowledge_engine
+            res = rag_knowledge_engine.index_directory(d_path)
+            if not res.get("success"):
+                return True, f"Failed to index directory, sir: {res.get('error')}"
+            return True, f"Directory indexed: {res['newly_indexed']} new files ({res['total_knowledge_chunks']} total semantic chunks, {res['unchanged_skipped']} skipped as up to date)."
+
+        rag_query_match = re.search(
+            r"^(?:query knowledge base for|query knowledge base|search knowledge base for|search knowledge base|ask knowledge base|search documents for|query documents for)\s+(.+)$",
+            clean,
+            re.IGNORECASE
+        )
+        if rag_query_match:
+            q_text = rag_query_match.group(1).strip()
+            from core.rag_knowledge_engine import rag_knowledge_engine
+            res = rag_knowledge_engine.query_knowledge(q_text)
+            return True, res["synthesis"]
+
+        # ─────────────────────────────────────────────────────────────────────
         # 5a-2. Command Universal Free AI Matrix (Global Models, OmniRoute Providers & Every Field of Work)
         # ─────────────────────────────────────────────────────────────────────
         if any(p in clean_lower for p in [
