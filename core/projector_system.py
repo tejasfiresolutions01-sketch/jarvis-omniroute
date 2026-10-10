@@ -49,7 +49,8 @@ class ProjectorSystem:
     PROJECTION_MODES = ["standard", "pyramid", "anaglyph", "floating"]
     SUPPORTED_MODELS = [
         "helmet", "reactor", "globe", "tesseract", "drone",
-        "gauntlet", "emitter", "neural_mesh", "planetary_radar", "quantum_dna"
+        "gauntlet", "emitter", "neural_mesh", "planetary_radar", "quantum_dna",
+        "acoustic_ribbon"
     ]
     PALETTES = ["stark_cyan", "mark_crimson", "quantum_emerald", "plasma_amber", "ultraviolet_violet"]
 

@@ -20,7 +20,7 @@ class TestMesh3DEngine(unittest.TestCase):
 
     def test_procedural_meshes_generation(self):
         """All procedural models (helmet, reactor, globe, tesseract, drone, neural, radar, dna) must construct valid geometry."""
-        for name in ["helmet", "reactor", "globe", "tesseract", "drone", "neural_mesh", "planetary_radar", "quantum_dna"]:
+        for name in ["helmet", "reactor", "globe", "tesseract", "drone", "neural_mesh", "planetary_radar", "quantum_dna", "acoustic_ribbon"]:
             mesh = MeshLoader.get_procedural_mesh(name)
             self.assertIsInstance(mesh, Mesh3D)
             self.assertGreater(len(mesh.vertices), 0)

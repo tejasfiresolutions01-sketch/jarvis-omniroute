@@ -386,6 +386,49 @@ class MeshLoader:
             mesh.normalize(65.0)
             return mesh
 
+        elif m in ["acoustic_ribbon", "fft_terrain", "audio_ribbon", "ribbon", "acoustic"]:
+            # 3D Acoustic FFT Ribbon Terrain Mesh: Audio-frequency spectral elevation waves
+            nodes = []
+            edges = []
+            highlights = []
+            cols = 16  # Frequency bands
+            rows = 12  # Time-series decay slices
+            dx = 120.0 / (cols - 1)
+            dz = 100.0 / (rows - 1)
+
+            for r in range(rows):
+                z_pos = -50.0 + (r * dz)
+                t_decay = math.exp(-0.16 * r)
+                for c in range(cols):
+                    x_pos = -60.0 + (c * dx)
+                    omega1 = (c / cols) * math.pi * 2.5
+                    omega2 = (r / rows) * math.pi * 1.8
+                    y_val = (
+                        math.sin(omega1) * 26.0 * t_decay
+                        + math.sin(omega1 * 2.2 + 0.4) * 14.0 * t_decay
+                        + math.cos(omega2) * 8.0
+                    )
+                    idx = len(nodes)
+                    nodes.append([x_pos, y_val, z_pos])
+
+                    # Highlight resonance peaks on foremost spectral ribbon
+                    if r < 3 and (c in [3, 7, 11, 14]):
+                        highlights.append(idx)
+
+            for r in range(rows):
+                for c in range(cols):
+                    curr = (r * cols) + c
+                    if c + 1 < cols:
+                        edges.append((curr, curr + 1))
+                    if r + 1 < rows:
+                        edges.append((curr, curr + cols))
+                    if c + 1 < cols and r + 1 < rows and (c % 2 == 0):
+                        edges.append((curr, curr + cols + 1))
+
+            mesh = Mesh3D("Acoustic FFT Ribbon Terrain", np.array(nodes), edges, highlight_nodes=highlights)
+            mesh.normalize(65.0)
+            return mesh
+
         else:  # "globe" default
             nodes = []
             edges = []

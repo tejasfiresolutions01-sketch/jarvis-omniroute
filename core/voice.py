@@ -9,6 +9,7 @@ import threading
 from typing import Optional, Dict
 from pathlib import Path
 import config
+from core.audio_ducking import audio_ducking, AffectiveTone, AffectiveVocalModulator
 
 _speak_lock = threading.Lock()
 _recent_lock = threading.Lock()
@@ -293,6 +294,18 @@ def speak_sync(text: str):
     except Exception:
         _speak_worker(clean_text)
 
+def _detect_affective_tone(text: str) -> AffectiveTone:
+    low = text.lower()
+    if any(w in low for w in ["alert", "warning", "critical", "danger", "emergency", "breach", "fail"]):
+        return AffectiveTone.ALERT
+    if any(w in low for w in ["triumph", "congratulations", "deployed", "success", "milestone", "victory"]):
+        return AffectiveTone.TRIUMPH
+    if any(w in low for w in ["calm", "relax", "evening", "standby", "peaceful"]):
+        return AffectiveTone.CALM
+    if any(w in low for w in ["benchmark", "telemetry", "diagnostics", "analysis", "matrix"]):
+        return AffectiveTone.TECHNICAL
+    return AffectiveTone.DEFAULT
+
 def _speak_worker(text: str):
     global is_speaking, _last_spoken_text
     spoken_text = clean_for_speech(text)
@@ -308,48 +321,52 @@ def _speak_worker(text: str):
             is_speaking = True
             _last_spoken_text = spoken_text
 
-        # 1. Try edge-tts (High Fidelity British Butler)
-        try:
-            import edge_tts
-            import pygame
+        tone = _detect_affective_tone(spoken_text)
+        eff_rate, eff_pitch = AffectiveVocalModulator.get_voice_params(tone, config.TTS_RATE, config.TTS_PITCH)
 
-            async def _synthesize():
-                communicate = edge_tts.Communicate(
-                    text=spoken_text,
-                    voice=config.TTS_VOICE,
-                    rate=config.TTS_RATE,
-                    pitch=config.TTS_PITCH
-                )
-                with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
-                    temp_path = f.name
-                await communicate.save(temp_path)
-                return temp_path
+        with audio_ducking.ducked():
+            # 1. Try edge-tts (High Fidelity British Butler)
+            try:
+                import edge_tts
+                import pygame
 
-            temp_audio = asyncio.run(_synthesize())
+                async def _synthesize():
+                    communicate = edge_tts.Communicate(
+                        text=spoken_text,
+                        voice=config.TTS_VOICE,
+                        rate=eff_rate,
+                        pitch=eff_pitch
+                    )
+                    with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
+                        temp_path = f.name
+                    await communicate.save(temp_path)
+                    return temp_path
 
-            # Play with pygame
-            if not pygame.mixer.get_init():
-                prewarm_audio_engine()
+                temp_audio = asyncio.run(_synthesize())
+
+                # Play with pygame
                 if not pygame.mixer.get_init():
-                    pygame.mixer.init()
-            pygame.mixer.music.load(temp_audio)
-            pygame.mixer.music.play()
-            while pygame.mixer.music.get_busy() and is_speaking:
-                pygame.time.Clock().tick(10)
-            try:
-                if pygame.mixer.get_init():
-                    pygame.mixer.music.stop()
-                    pygame.mixer.music.unload()
+                    prewarm_audio_engine()
+                    if not pygame.mixer.get_init():
+                        pygame.mixer.init()
+                pygame.mixer.music.load(temp_audio)
+                pygame.mixer.music.play()
+                while pygame.mixer.music.get_busy() and is_speaking:
+                    pygame.time.Clock().tick(10)
+                try:
+                    if pygame.mixer.get_init():
+                        pygame.mixer.music.stop()
+                        pygame.mixer.music.unload()
+                except Exception:
+                    pass
+                try:
+                    os.remove(temp_audio)
+                except Exception:
+                    pass
+                is_speaking = False
+                return
             except Exception:
                 pass
-            try:
-                os.remove(temp_audio)
-            except Exception:
-                pass
-            is_speaking = False
-            return
-        except Exception:
-            pass
 
         # 2. Offline Fallback: Windows SAPI5 (pyttsx3)
         try:

@@ -36,6 +36,8 @@ class SpatialGestureEngine:
         self._thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
         self._callback: Optional[Callable[[str, Dict[str, Any]], None]] = None
+        self._grabbed_node_idx: Optional[int] = None
+        self._is_grabbing: bool = False
 
     def analyze_frame(self, frame: np.ndarray) -> Tuple[Optional[str], Dict[str, Any]]:
         """
@@ -259,6 +261,67 @@ class SpatialGestureEngine:
         self._thread = threading.Thread(target=_worker, daemon=True, name="GestureTrackerThread")
         self._thread.start()
 
+    def ray_cast_mesh(
+        self,
+        cx: float,
+        cy: float,
+        frame_w: int,
+        frame_h: int,
+        mesh_vertices: np.ndarray,
+        tolerance_radius: float = 0.25
+    ) -> Optional[Tuple[int, float]]:
+        """
+        Projects optical 2D hand centroid into 3D view frustum ray
+        and detects intersection with nearest 3D mesh vertex.
+        Returns (vertex_index, distance_to_ray) or None.
+        """
+        if mesh_vertices is None or len(mesh_vertices) == 0 or frame_w <= 0 or frame_h <= 0:
+            return None
+
+        # Normalized device coordinates [-1.0, 1.0]
+        ndc_x = (float(cx) / float(frame_w)) * 2.0 - 1.0
+        ndc_y = 1.0 - (float(cy) / float(frame_h)) * 2.0
+
+        # Normalize mesh vertices to [-1.0, 1.0] bounding sphere for depth projection
+        v_coords = mesh_vertices[:, :3].copy()
+        max_dist = float(np.max(np.linalg.norm(v_coords, axis=1))) if len(v_coords) > 0 else 1.0
+        if max_dist > 1e-4:
+            v_norm = v_coords / max_dist
+        else:
+            v_norm = v_coords
+
+        # Compute perpendicular distance in XY projection plane (orthographic/perspective proxy)
+        diff_x = v_norm[:, 0] - ndc_x
+        diff_y = v_norm[:, 1] - ndc_y
+        dist_sq = (diff_x ** 2) + (diff_y ** 2)
+
+        min_idx = int(np.argmin(dist_sq))
+        min_dist = float(np.sqrt(dist_sq[min_idx]))
+
+        if min_dist <= tolerance_radius:
+            return (min_idx, min_dist)
+        return None
+
+    def grab_node(self, node_idx: int) -> bool:
+        """Latches mid-air spatial hold onto targeted 3D mesh node."""
+        self._grabbed_node_idx = node_idx
+        self._is_grabbing = True
+        logger.info(f"Spatial Ray-Cast: Latched onto 3D node index {node_idx}")
+        return True
+
+    def release_node(self) -> Optional[int]:
+        """Releases mid-air hold on currently grasped 3D mesh node."""
+        released = self._grabbed_node_idx
+        self._grabbed_node_idx = None
+        self._is_grabbing = False
+        if released is not None:
+            logger.info(f"Spatial Ray-Cast: Released 3D node index {released}")
+        return released
+
+    def get_grabbed_node(self) -> Optional[int]:
+        """Returns the index of the currently latched 3D mesh node if active."""
+        return self._grabbed_node_idx if self._is_grabbing else None
+
     def stop_tracking_daemon(self):
         """Gracefully halts the background gesture tracking thread."""
         if self._is_tracking:
@@ -270,3 +333,4 @@ class SpatialGestureEngine:
 
 # Global singleton instance
 spatial_gesture_engine = SpatialGestureEngine()
+
