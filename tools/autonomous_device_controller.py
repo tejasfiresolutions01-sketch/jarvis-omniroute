@@ -427,21 +427,30 @@ class AutonomousDeviceController:
         Types text. For payloads > 50 chars or multi-line strings, uses instant
         clipboard paste to prevent dropped keystrokes.
         """
-        if not text:
-            return {"success": True, "chars": 0}
-
         try:
+            pasted = False
             if use_clipboard_for_large and (len(text) > 50 or "\n" in text):
-                import pyperclip
-                orig = pyperclip.paste()
-                pyperclip.copy(text)
-                pyautogui.hotkey("ctrl", "v")
-                time.sleep(0.05)
                 try:
-                    pyperclip.copy(orig)
-                except Exception:
-                    pass
-            else:
+                    import pyperclip
+                    orig = None
+                    try:
+                        orig = pyperclip.paste()
+                    except Exception:
+                        pass
+                    pyperclip.copy(text)
+                    pyautogui.hotkey("ctrl", "v")
+                    time.sleep(0.05)
+                    pasted = True
+                    if orig is not None:
+                        try:
+                            pyperclip.copy(orig)
+                        except Exception:
+                            pass
+                except Exception as clip_err:
+                    logger.debug(f"Clipboard paste failed ({clip_err}); falling back to typing.")
+                    pasted = False
+
+            if not pasted:
                 pyautogui.write(text, interval=delay)
 
             return {"success": True, "chars": len(text)}

@@ -1162,6 +1162,85 @@ class LocalIntelligence:
             return True, f"Business event '{ev_name}' processed across active workflows. {len(res)} automations executed."
 
         # ─────────────────────────────────────────────────────────────────────
+        # Skill 16: Hugging Face Cognitive Hub & Model Exploration Engine
+        # ─────────────────────────────────────────────────────────────────────
+        if any(p in clean_lower for p in ["hugging face status", "huggingface status", "hf status", "hugging face info", "huggingface info"]):
+            from tools.huggingface_client import huggingface_client
+            return True, huggingface_client.format_status_summary()
+
+        hf_search_model_match = re.match(r"^(?:search hugging face model|search hugging face models|search hf models|search hf model|hugging face search model|hugging face search models|hugging face models)\s+(.+)$", clean, re.IGNORECASE)
+        if hf_search_model_match:
+            q_model = hf_search_model_match.group(1).strip()
+            from tools.huggingface_client import huggingface_client
+            res = huggingface_client.search_models(q_model, limit=4)
+            if not res.get("success"):
+                return True, f"Hugging Face model search failed: {res.get('error')}"
+            models_summary = ", ".join([f"{m['id']} ({m['downloads']:,} downloads)" for m in res["models"]]) or "Zero matching repositories found"
+            return True, f"Hugging Face Hub search for '{q_model}': {len(res['models'])} models identified: {models_summary}."
+
+        hf_info_match = re.match(r"^(?:hugging face model info|hf model info|inspect hf model|inspect hugging face model|hugging face inspect)\s+(.+)$", clean, re.IGNORECASE)
+        if hf_info_match:
+            repo_q = hf_info_match.group(1).strip()
+            from tools.huggingface_client import huggingface_client
+            res = huggingface_client.get_model_info(repo_q)
+            if not res.get("success"):
+                return True, f"Model card inspection failed: {res.get('error')}"
+            tags_str = ", ".join(res.get("tags", [])[:4]) or "Standard"
+            return True, f"Hugging Face Model '{res['id']}': {res['pipeline_tag']} pipeline, {res['downloads']:,} downloads, {res['likes']} likes ({res['security']}). Tags: {tags_str}. Url: {res['url']}."
+
+        hf_search_dataset_match = re.match(r"^(?:search hugging face dataset|search hf dataset|search hf datasets|hugging face search dataset|hugging face search datasets)\s+(.+)$", clean, re.IGNORECASE)
+        if hf_search_dataset_match:
+            q_data = hf_search_dataset_match.group(1).strip()
+            from tools.huggingface_client import huggingface_client
+            res = huggingface_client.search_datasets(q_data, limit=3)
+            if not res.get("success"):
+                return True, f"Dataset search failed: {res.get('error')}"
+            d_list = ", ".join([d["id"] for d in res["datasets"]]) or "None"
+            return True, f"Hugging Face Datasets for '{q_data}': {d_list}."
+
+        hf_search_space_match = re.match(r"^(?:search hugging face space|search hf space|search hf spaces|hugging face search space|hugging face search spaces)\s+(.+)$", clean, re.IGNORECASE)
+        if hf_search_space_match:
+            q_sp = hf_search_space_match.group(1).strip()
+            from tools.huggingface_client import huggingface_client
+            res = huggingface_client.search_spaces(q_sp, limit=3)
+            if not res.get("success"):
+                return True, f"Spaces search failed: {res.get('error')}"
+            s_list = ", ".join([s["id"] for s in res["spaces"]]) or "None"
+            return True, f"Hugging Face Spaces for '{q_sp}': {s_list}."
+
+        hf_gen_match = re.match(r"^(?:ask hugging face|hugging face generate|hf generate|hugging face query|ask hf)\s+(.+)$", clean, re.IGNORECASE)
+        if hf_gen_match:
+            p_text = hf_gen_match.group(1).strip()
+            from tools.huggingface_client import huggingface_client
+            res = huggingface_client.generate_text(p_text)
+            return True, f"[{res['provider']}]: {res['generated_text']}"
+
+        hf_sum_match = re.match(r"^(?:hugging face summarize|hf summarize)\s+(.+)$", clean, re.IGNORECASE)
+        if hf_sum_match:
+            t_sum = hf_sum_match.group(1).strip()
+            from tools.huggingface_client import huggingface_client
+            res = huggingface_client.summarize_text(t_sum)
+            return True, f"Hugging Face Summary ({res['model']}): {res['summary']}"
+
+        hf_emb_match = re.match(r"^(?:hugging face embed|hf embed)\s+(.+)$", clean, re.IGNORECASE)
+        if hf_emb_match:
+            t_emb = hf_emb_match.group(1).strip()
+            from tools.huggingface_client import huggingface_client
+            res = huggingface_client.generate_embeddings(t_emb)
+            sample_str = ", ".join([str(v) for v in res["vector_sample"][:3]])
+            return True, f"Extracted {res['dimensions']}-dimensional vector embedding via {res['model']}. Sample: [{sample_str}, ...]."
+
+        hf_dl_match = re.match(r"^(?:download hf model|download hugging face model|fetch hf model)\s+([a-zA-Z0-9_\-\.\/]+?)\s+(?:filename|file)\s+([a-zA-Z0-9_\-\.]+)$", clean, re.IGNORECASE)
+        if hf_dl_match:
+            r_id = hf_dl_match.group(1).strip()
+            f_name = hf_dl_match.group(2).strip()
+            from tools.huggingface_client import huggingface_client
+            res = huggingface_client.download_file(r_id, f_name)
+            if not res.get("success"):
+                return True, f"Download failed: {res.get('error')}"
+            return True, f"Downloaded {f_name} from '{r_id}' to local cache: {res['local_path']} ({res['size_bytes']:,} bytes)."
+
+        # ─────────────────────────────────────────────────────────────────────
         # 2. Application, Folder & Script Launching
         # ─────────────────────────────────────────────────────────────────────
         folder_match = re.match(r"^(?:open|explore|show)\s+(?:the\s+)?(?:folder|directory)\s+(.+)$", clean_lower)

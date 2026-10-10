@@ -222,7 +222,8 @@ def calculate_telemetry(pitch: float, roll: float) -> float:
 
     def test_device_controller_typing_and_clipboard(self):
         """Tests type_text logic."""
-        with patch("pyautogui.write") as mock_write, patch("pyautogui.hotkey") as mock_hotkey:
+        with patch("pyautogui.write") as mock_write, patch("pyautogui.hotkey") as mock_hotkey, \
+             patch("pyperclip.copy") as mock_copy, patch("pyperclip.paste", return_value=""):
             # Short text: normal write
             res_short = autonomous_device_controller.type_text("hello", delay=0.01)
             self.assertTrue(res_short["success"])

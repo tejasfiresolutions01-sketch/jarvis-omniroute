@@ -55,6 +55,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+HUGGINGFACE_TOKEN = os.getenv("HUGGINGFACE_TOKEN", os.getenv("HF_TOKEN", ""))
 
 # Directory Paths
 ASSETS_DIR = BASE_DIR / "assets"
