@@ -361,6 +361,19 @@ class AutonomousDeviceController:
             "hwnd": hwnd,
         }
 
+    def get_window_hierarchy(self, max_windows: int = 15) -> Dict[str, Any]:
+        """Provides a structured spatial hierarchy of active desktop windows."""
+        windows = self.list_windows(visible_only=True)
+        active = self.get_active_window_info()
+        res_w, res_h = self.get_screen_resolution()
+        return {
+            "success": True,
+            "display_resolution": f"{res_w}x{res_h}",
+            "active_window": active,
+            "total_visible_windows": len(windows),
+            "windows": windows[:max_windows],
+        }
+
     # ─────────────────────────────────────────────────────────────────────────
     # 3. Input Automation & Physical Emulation
     # ─────────────────────────────────────────────────────────────────────────

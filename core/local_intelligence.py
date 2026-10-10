@@ -1505,6 +1505,21 @@ class LocalIntelligence:
         # ─────────────────────────────────────────────────────────────────────
         # 5a-1. Daily Upgrade Advisory & Permission-Gated Execution
         # ─────────────────────────────────────────────────────────────────────
+        # Batch execute all upgrades
+        if any(clean_lower == phrase for phrase in [
+            "everything", "upgrade everything", "approve all upgrades", 
+            "execute all upgrades", "deploy all upgrades", "apply all upgrades", 
+            "approve all", "execute all", "upgrade all"
+        ]) or re.search(r"^(?:approve|execute|deploy|apply)\s+all(?:\s+upgrades)?$", clean, re.IGNORECASE):
+            from core.upgrade_advisor import upgrade_advisor
+            batch_res = upgrade_advisor.execute_all_approved_upgrades()
+            deployed = batch_res["deployed_count"]
+            total = batch_res["total"]
+            return True, (
+                f"All requested upgrades deployed and activated, sir ({deployed} newly deployed out of {total} total upgrades).\n"
+                f"Architectural, memory, latency, and system hardening routines are now fully active across J.A.R.V.I.S."
+            )
+
         approve_match = re.search(r"^(?:approve upgrade|execute upgrade|deploy upgrade|apply upgrade)\s+([a-zA-Z0-9\-_]+)$", clean, re.IGNORECASE)
         if approve_match:
             up_id = approve_match.group(1).strip()

@@ -45,8 +45,16 @@ class SpatialGestureEngine:
             return None, {}
 
         h, w, _ = frame.shape
-        # Convert to YCrCb for robust illumination-invariant skin detection
+        # Convert to YCrCb and apply CLAHE for dynamic lighting adaptation (MAJOR-4)
         ycrcb = cv2.cvtColor(frame, cv2.COLOR_BGR2YCrCb)
+        try:
+            y, cr, cb = cv2.split(ycrcb)
+            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+            y_eq = clahe.apply(y)
+            ycrcb = cv2.merge([y_eq, cr, cb])
+        except Exception:
+            pass
+
         # Standard human skin chrominance bounds
         lower_skin = np.array([0, 133, 77], dtype=np.uint8)
         upper_skin = np.array([255, 173, 127], dtype=np.uint8)

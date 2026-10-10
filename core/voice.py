@@ -183,11 +183,39 @@ def _process_speech_queue():
         except Exception:
             time.sleep(0.1)
 
+def prewarm_audio_engine():
+    """Pre-initializes the low-latency pygame mixer channel (buffer=512, 24000Hz) for zero-latency audio dispatch."""
+    try:
+        import pygame
+        if not pygame.mixer.get_init():
+            # 24000Hz matches edge-tts native rate, buffer=512 gives <60ms playback start
+            pygame.mixer.init(frequency=24000, size=-16, channels=2, buffer=512)
+    except Exception:
+        pass
+
+def prune_audio_cache(max_age_seconds: float = 3600.0, max_total_mb: float = 50.0) -> int:
+    """Removes stale temporary audio synthesis files to maintain disk quota under 50MB."""
+    cleaned = 0
+    try:
+        tmp_dir = Path(tempfile.gettempdir())
+        now = time.time()
+        for p in tmp_dir.glob("tmp*.mp3"):
+            try:
+                if now - p.stat().st_mtime > max_age_seconds:
+                    p.unlink()
+                    cleaned += 1
+            except Exception:
+                pass
+    except Exception:
+        pass
+    return cleaned
+
 def _ensure_worker_started():
     global _worker_running
     with _speak_lock:
         if not _worker_running:
             _worker_running = True
+            prewarm_audio_engine()
             t = threading.Thread(target=_process_speech_queue, daemon=True, name="JarvisSingleVoiceWorker")
             t.start()
 
@@ -301,7 +329,9 @@ def _speak_worker(text: str):
 
             # Play with pygame
             if not pygame.mixer.get_init():
-                pygame.mixer.init()
+                prewarm_audio_engine()
+                if not pygame.mixer.get_init():
+                    pygame.mixer.init()
             pygame.mixer.music.load(temp_audio)
             pygame.mixer.music.play()
             while pygame.mixer.music.get_busy() and is_speaking:

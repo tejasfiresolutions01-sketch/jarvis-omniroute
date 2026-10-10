@@ -317,9 +317,23 @@ class HologramSentinel:
         self._thread.start()
         print("[Holographic Sentinel]: Autonomous holographic interface daemon active.")
 
+    def terminate_hud(self):
+        """Cleanly terminates any spawned HUD child process to prevent ResourceWarnings."""
+        if self._hud_proc and self._hud_proc.poll() is None:
+            try:
+                self._hud_proc.terminate()
+                self._hud_proc.wait(timeout=1.0)
+            except Exception:
+                try:
+                    self._hud_proc.kill()
+                except Exception:
+                    pass
+            self._hud_proc = None
+
     def stop(self):
         """Stops the holographic monitoring daemon."""
         self._running = False
+        self.terminate_hud()
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=1.0)
 

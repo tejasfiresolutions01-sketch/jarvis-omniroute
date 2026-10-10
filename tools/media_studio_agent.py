@@ -323,6 +323,13 @@ class MediaStudioAgent:
             return f'ffmpeg -ss {start} -i "{v}" -t {dur} -c copy "{stem}_trimmed.mp4"'
         elif action == "gif":
             return f'ffmpeg -i "{v}" -vf "fps=10,scale=480:-1:flags=lanczos" "{stem}.gif"'
+        elif action == "subtitles":
+            srt = kwargs.get("srt_path", f"{stem}.srt")
+            return f'ffmpeg -i "{v}" -vf "subtitles=\'{srt}\'" -c:a copy "{stem}_subtitled.mp4"'
+        elif action == "speed":
+            spd = float(kwargs.get("speed", 1.5))
+            setpts = f"{1.0/spd:.2f}"
+            return f'ffmpeg -i "{v}" -filter_complex "[0:v]setpts={setpts}*PTS[v];[0:a]atempo={spd}[a]" -map "[v]" -map "[a]" "{stem}_speed.mp4"'
         return f'ffmpeg -i "{v}" "{stem}_converted.mp4"'
 
     def get_status(self) -> Dict[str, Any]:

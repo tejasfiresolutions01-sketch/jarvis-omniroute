@@ -31,11 +31,11 @@ class AmbientWatchdog:
                             speak(f"Pardon the interruption, sir. Main power reserves have dropped to {battery.percent} percent. Please connect external power.")
                             self._last_battery_alert = now
 
-                    # Process Priority Auto-Elevation Maintenance
+                    # Process Priority Dynamic Tuning (MINOR-6)
                     try:
                         p = psutil.Process()
-                        if p.nice() != psutil.HIGH_PRIORITY_CLASS:
-                            p.nice(psutil.HIGH_PRIORITY_CLASS)
+                        if p.nice() != psutil.ABOVE_NORMAL_PRIORITY_CLASS:
+                            p.nice(psutil.ABOVE_NORMAL_PRIORITY_CLASS)
                     except Exception:
                         pass
                 except Exception:

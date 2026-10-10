@@ -27,12 +27,26 @@ TTS_VOICE = os.getenv("TTS_VOICE", "en-GB-RyanNeural")
 TTS_RATE = os.getenv("TTS_RATE", "+0%")
 TTS_PITCH = os.getenv("TTS_PITCH", "+0Hz")
 
+def _safe_int(env_name: str, default: int) -> int:
+    val = os.getenv(env_name, "")
+    try:
+        return int(val) if val.strip() else default
+    except Exception:
+        return default
+
+def _safe_float(env_name: str, default: float) -> float:
+    val = os.getenv(env_name, "")
+    try:
+        return float(val) if val.strip() else default
+    except Exception:
+        return default
+
 # Voice Conversation & Biometric Settings
-VOICE_PAUSE_THRESHOLD = float(os.getenv("VOICE_PAUSE_THRESHOLD", "2.0")) # Seconds of silence before concluding utterance (patient sentence completion)
-VOICE_PHRASE_TIME_LIMIT = float(os.getenv("VOICE_PHRASE_TIME_LIMIT", "35.0"))
-VOICE_CONVERSATION_IDLE_TIMEOUT = float(os.getenv("VOICE_CONVERSATION_IDLE_TIMEOUT", "12.0"))
+VOICE_PAUSE_THRESHOLD = _safe_float("VOICE_PAUSE_THRESHOLD", 2.0) # Seconds of silence before concluding utterance
+VOICE_PHRASE_TIME_LIMIT = _safe_float("VOICE_PHRASE_TIME_LIMIT", 35.0)
+VOICE_CONVERSATION_IDLE_TIMEOUT = _safe_float("VOICE_CONVERSATION_IDLE_TIMEOUT", 12.0)
 VOICE_VERIFICATION_ENABLED = os.getenv("VOICE_VERIFICATION_ENABLED", "true").lower() in ("true", "1", "yes")
-VOICE_PROFILE_TOLERANCE = float(os.getenv("VOICE_PROFILE_TOLERANCE", "0.35")) # Permissive adaptive tolerance
+VOICE_PROFILE_TOLERANCE = _safe_float("VOICE_PROFILE_TOLERANCE", 0.35) # Permissive adaptive tolerance
 FORCE_OFFLINE_STT = os.getenv("FORCE_OFFLINE_STT", "false").lower() in ("true", "1", "yes")
 
 # Proactive Butler, Notification & Protocol Sunrise Settings
@@ -43,9 +57,9 @@ DISPLAY_GREETINGS_VOCAL = os.getenv("DISPLAY_GREETINGS_VOCAL", "false").lower() 
 NOTIFY_ONLY_ONCE = True
 
 # Network & Port Settings
-WEB_PORTAL_PORT = int(os.getenv("WEB_PORTAL_PORT", "5050"))
-WEB_PORTAL_WS_PORT = int(os.getenv("WEB_PORTAL_WS_PORT", "5051"))
-OMNIROUTE_PORT = int(os.getenv("OMNIROUTE_PORT", "20128"))
+WEB_PORTAL_PORT = _safe_int("WEB_PORTAL_PORT", 5050)
+WEB_PORTAL_WS_PORT = _safe_int("WEB_PORTAL_WS_PORT", 5051)
+OMNIROUTE_PORT = _safe_int("OMNIROUTE_PORT", 20128)
 OMNIROUTE_BASE_URL = os.getenv("OMNIROUTE_BASE_URL", f"http://localhost:{OMNIROUTE_PORT}/v1")
 OMNIROUTE_MODEL = os.getenv("OMNIROUTE_MODEL", "auto/best-fast")
 

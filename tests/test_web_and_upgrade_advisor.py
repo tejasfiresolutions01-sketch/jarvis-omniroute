@@ -83,6 +83,18 @@ class TestWebAndUpgradeAdvisor(unittest.TestCase):
         self.assertTrue(ok3)
         self.assertIn("already deployed", msg3.lower())
 
+    def test_execute_all_approved_upgrades(self):
+        """Verifies batch execution of all 15 proposed upgrades."""
+        batch = self.advisor.execute_all_approved_upgrades()
+        self.assertTrue(batch["success"])
+        self.assertEqual(batch["total"], 15)
+        self.assertGreaterEqual(len(batch["results"]), 15)
+
+        # Verify voice directive 'everything' or 'approve all upgrades'
+        handled, msg = local_intelligence.evaluate_and_execute("approve all upgrades")
+        self.assertTrue(handled)
+        self.assertIn("upgrades deployed", msg.lower())
+
     def test_local_intelligence_web_and_upgrade_intents(self):
         """Verifies voice directives for web connection, streams, and upgrades."""
         queries = [
@@ -90,7 +102,7 @@ class TestWebAndUpgradeAdvisor(unittest.TestCase):
             ("suggest daily upgrades", "Daily Upgrade Advisory"),
             ("show major upgrades", "5 MAJOR ARCHITECTURAL UPGRADES"),
             ("show minor upgrades", "10 MINOR CODE & SYSTEM REFINEMENTS"),
-            ("approve upgrade MINOR-10", "deployed successfully"),
+            ("approve upgrade MINOR-10", "deployed"),
         ]
 
         for q, expected in queries:

@@ -88,5 +88,13 @@ def fetch_webpage_content(url: str, max_chars: int = 1500) -> str:
         clean_text = re.sub(r'\s+', ' ', clean_text).strip()
 
         return clean_text[:max_chars]
+    except requests.exceptions.Timeout:
+        return "Error fetching webpage: Request timed out after 6.0s."
+    except requests.exceptions.HTTPError as e:
+        return f"Error fetching webpage: HTTP protocol error ({str(e)})"
+    except requests.exceptions.ConnectionError:
+        return "Error fetching webpage: Host unreachable or connection failed."
+    except requests.exceptions.RequestException as e:
+        return f"Error fetching webpage: Network exception ({str(e)})"
     except Exception as e:
         return f"Error fetching webpage: {str(e)}"
