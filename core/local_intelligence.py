@@ -270,7 +270,7 @@ class LocalIntelligence:
             return True, quotation_engine.format_voice_summary(quote_data)
 
         # Multi-Channel Sales Outreach Stack
-        outreach_match = re.match(r"^(?:generate|create|prepare|launch|run)\s+(?:commercial\s+)?(?:outreach|sales\s+outreach|campaign\s+and\s+quote)\s+(?:for\s+)?(.+)$", clean_lower)
+        outreach_match = re.match(r"^(?:generate|create|prepare|launch|run)\s+(?:commercial\s+)?(?:outreach(?!\s+cadence)|sales\s+outreach|campaign\s+and\s+quote)\s+(?:for\s+)?(.+)$", clean_lower)
         if outreach_match:
             from tools.digital_marketing_suite import marketing_suite
             target_entity = outreach_match.group(1).strip()
@@ -1052,6 +1052,114 @@ class LocalIntelligence:
             from tools.autonomous_device_controller import autonomous_device_controller
             res = autonomous_device_controller.mouse_click(x=cx, y=cy)
             return True, f"Mouse clicked at coordinates ({res['x']}, {res['y']})."
+
+        # ─────────────────────────────────────────────────────────────────────
+        # Skill 15: Enterprise Business Automation & Commercial Operations Suite
+        # ─────────────────────────────────────────────────────────────────────
+        if any(p in clean_lower for p in ["business automation status", "business automation vitals", "business operations status", "commercial automation status"]):
+            from tools.business_automation_suite import business_automation_suite
+            st = business_automation_suite.get_status()
+            return True, f"Business Automation Suite online. Status: {st['status']}. Accounts tracked: {st['clients_count']}. Invoices: {st['invoices_count']}. Contracts: {st['contracts_count']}. Active workflows: {st['workflows_count']}."
+
+        if any(p in clean_lower for p in ["business intelligence", "executive business briefing", "business analytics", "commercial briefing", "commercial intelligence"]):
+            from tools.business_automation_suite import business_automation_suite
+            return True, business_automation_suite.format_executive_briefing()
+
+        if any(p in clean_lower for p in ["financial pnl", "p&l report", "pnl report", "profit and loss", "financial report"]):
+            from tools.business_automation_suite import business_automation_suite
+            pnl = business_automation_suite.get_financial_pnl()
+            return True, f"P&L Financial Report: Realized Revenue ₹{pnl['realized_revenue']:,.2f}, Total Expenses ₹{pnl['total_expenses']:,.2f}, Net Operating Profit ₹{pnl['net_operating_profit']:,.2f} ({pnl['net_profit_margin_pct']}% margin). Outstanding Receivables: ₹{pnl['outstanding_receivables']:,.2f}."
+
+        if any(p in clean_lower for p in ["check expiring contracts", "expiring contracts", "contract renewals", "check contract renewals", "amc renewals"]):
+            from tools.business_automation_suite import business_automation_suite
+            expiring = business_automation_suite.check_expiring_contracts(days_ahead=30)
+            if not expiring:
+                return True, "All active contracts and service agreements are up to date, sir. Zero expirations pending in the next 30 days."
+            summary = ", ".join([f"{c['client_name']} ({c['contract_number']}: ₹{c['value']:,.2f})" for c in expiring[:3]])
+            return True, f"Identified {len(expiring)} contracts expiring within 30 days: {summary}. Automated renewal notices prepared."
+
+        if any(p in clean_lower for p in ["list business workflows", "show business workflows", "list workflows"]):
+            from tools.business_automation_suite import business_automation_suite
+            wfs = business_automation_suite.list_workflows()
+            names = ", ".join([f"'{w['name']}' ({w['trigger_event']})" for w in wfs[:4]])
+            return True, f"Tracking {len(wfs)} business automation recipes: {names}."
+
+        biz_onboard_match = re.match(r"^(?:onboard client|add client|create client)\s+([a-zA-Z0-9_\-\s]+?)(?:\s+company\s+([a-zA-Z0-9_\-\s]+?))?(?:\s+email\s+([a-zA-Z0-9_\-\.@]+))?(?:\s+value\s+([\d\.]+))?$", clean, re.IGNORECASE)
+        if biz_onboard_match:
+            c_name = biz_onboard_match.group(1).strip()
+            c_comp = (biz_onboard_match.group(2) or c_name).strip()
+            c_email = biz_onboard_match.group(3)
+            c_val = float(biz_onboard_match.group(4) or 0.0)
+            from tools.business_automation_suite import business_automation_suite
+            res = business_automation_suite.create_or_update_client(name=c_name, company=c_comp, email=c_email, deal_value=c_val)
+            action = "Onboarded new" if res["is_new"] else "Updated existing"
+            return True, f"{action} client profile '{c_name}' in CRM pipeline at stage '{res['client']['stage']}' (Deal Value: ₹{res['client']['deal_value']:,.2f})."
+
+        biz_advance_match = re.match(r"^(?:advance client|move client|update client stage)\s+([a-zA-Z0-9_\-\s]+?)\s+(?:to\s+|stage\s+)([a-zA-Z0-9_\-\s]+)$", clean, re.IGNORECASE)
+        if biz_advance_match:
+            c_target = biz_advance_match.group(1).strip()
+            c_stage = biz_advance_match.group(2).strip()
+            from tools.business_automation_suite import business_automation_suite
+            res = business_automation_suite.advance_client_stage(c_target, c_stage)
+            if not res.get("success"):
+                return True, f"Stage update failed: {res.get('error')}"
+            return True, f"Client '{res['client_name']}' advanced from '{res['previous_stage']}' to '{res['new_stage']}'. Triggered downstream automations."
+
+        biz_inv_match = re.match(r"^(?:create invoice|generate invoice)\s+(?:for\s+)?([a-zA-Z0-9_\-\s]+?)\s+(?:amount\s+|for\s+amount\s+)([\d\.]+)(?:\s+(?:for|description)\s+(.+))?$", clean, re.IGNORECASE)
+        if biz_inv_match:
+            c_name = biz_inv_match.group(1).strip()
+            inv_amt = float(biz_inv_match.group(2))
+            inv_desc = biz_inv_match.group(3) or "Commercial Service Fulfillment"
+            from tools.business_automation_suite import business_automation_suite
+            res = business_automation_suite.create_invoice(
+                client_name=c_name,
+                line_items=[{"description": inv_desc, "quantity": 1, "unit_rate": inv_amt}],
+            )
+            inv = res["invoice"]
+            return True, f"Commercial invoice {inv['invoice_number']} generated for {inv['client_name']}: Subtotal ₹{inv['subtotal']:,.2f}, 18% Tax ₹{inv['tax_amount']:,.2f}, Total Payable ₹{inv['total_amount']:,.2f} (Due: {inv['due_date']})."
+
+        biz_pay_match = re.match(r"^(?:record payment|log payment)\s+(?:for\s+)?([a-zA-Z0-9_\-]+)\s+(?:amount\s+)?([\d\.]+)$", clean, re.IGNORECASE)
+        if biz_pay_match:
+            inv_id = biz_pay_match.group(1).strip()
+            p_amt = float(biz_pay_match.group(2))
+            from tools.business_automation_suite import business_automation_suite
+            res = business_automation_suite.record_payment(inv_id, p_amt)
+            if not res.get("success"):
+                return True, f"Payment logging failed: {res.get('error')}"
+            return True, f"Payment of ₹{p_amt:,.2f} recorded for invoice {res['invoice_number']}. Total Paid: ₹{res['new_paid_amount']:,.2f}, Outstanding Balance: ₹{res['outstanding_balance']:,.2f} ({res['status']})."
+
+        biz_exp_match = re.match(r"^(?:log expense|record expense)\s+([a-zA-Z0-9_\-]+)\s+amount\s+([\d\.]+)(?:\s+(?:for|desc|description)\s+(.+))?$", clean, re.IGNORECASE)
+        if biz_exp_match:
+            e_cat = biz_exp_match.group(1).strip()
+            e_amt = float(biz_exp_match.group(2))
+            e_desc = biz_exp_match.group(3) or "Operational expenditure"
+            from tools.business_automation_suite import business_automation_suite
+            res = business_automation_suite.log_expense(category=e_cat, description=e_desc, amount=e_amt)
+            return True, f"Expense recorded: ₹{res['amount']:,.2f} under '{res['category']}' ({res['description']})."
+
+        biz_cnt_match = re.match(r"^(?:create contract|new contract|create amc)\s+(?:for\s+)?([a-zA-Z0-9_\-\s]+?)\s+value\s+([\d\.]+)(?:\s+title\s+(.+))?$", clean, re.IGNORECASE)
+        if biz_cnt_match:
+            c_name = biz_cnt_match.group(1).strip()
+            c_val = float(biz_cnt_match.group(2))
+            c_title = biz_cnt_match.group(3) or "Annual Maintenance Agreement"
+            from tools.business_automation_suite import business_automation_suite
+            res = business_automation_suite.create_contract(client_name=c_name, title=c_title, value=c_val)
+            return True, f"Contract {res['contract_number']} active for {res['client_name']}: '{res['title']}' valued at ₹{res['value']:,.2f} (SLA: {res['sla_hours']}h response)."
+
+        biz_outreach_match = re.match(r"^(?:generate outreach cadence|b2b outreach cadence|outreach cadence)\s+(?:for\s+)?([a-zA-Z0-9_\-\s]+)$", clean, re.IGNORECASE)
+        if biz_outreach_match:
+            t_client = biz_outreach_match.group(1).strip()
+            from tools.business_automation_suite import business_automation_suite
+            res = business_automation_suite.generate_outreach_cadence(t_client)
+            c = res["cadence"]
+            return True, f"B2B Outreach Cadence generated for {c['client_name']} ({c['company']}): 4 strategic touchpoints compiled across Email, WhatsApp, and Executive follow-up."
+
+        biz_trig_match = re.match(r"^(?:run business workflow|trigger workflow|trigger business event)\s+([a-zA-Z0-9_\-\s]+)$", clean, re.IGNORECASE)
+        if biz_trig_match:
+            ev_name = biz_trig_match.group(1).strip()
+            from tools.business_automation_suite import business_automation_suite
+            res = business_automation_suite.trigger_event(ev_name, {"event_name": ev_name, "source": "user_directive"})
+            return True, f"Business event '{ev_name}' processed across active workflows. {len(res)} automations executed."
 
         # ─────────────────────────────────────────────────────────────────────
         # 2. Application, Folder & Script Launching
