@@ -524,17 +524,52 @@ class LocalIntelligence:
             return True, f"Projector 3D wireframe mesh shifted to: {new_m.upper()}, sir."
 
         if any(p in clean_lower for p in [
+            "project neural", "show neural", "3d neural", "neural mesh", "switch to neural"
+        ]):
+            from core.projector_system import projector_system
+            from tools.hud_controller import hud_controller
+            projector_system.set_3d_model("neural_mesh")
+            hud_controller.set_3d_model("neural_mesh")
+            return True, "Projecting 3D Neural Architecture Subsystem Constellation on the holographic projector, sir."
+
+        if any(p in clean_lower for p in [
+            "project radar", "show radar", "3d radar", "planetary radar", "switch to radar"
+        ]):
+            from core.projector_system import projector_system
+            from tools.hud_controller import hud_controller
+            projector_system.set_3d_model("planetary_radar")
+            hud_controller.set_3d_model("planetary_radar")
+            return True, "Projecting 3D Planetary Defense Radar on the holographic projector, sir."
+
+        if any(p in clean_lower for p in [
+            "project dna", "show dna", "3d dna", "quantum dna", "double helix", "switch to dna"
+        ]):
+            from core.projector_system import projector_system
+            from tools.hud_controller import hud_controller
+            projector_system.set_3d_model("quantum_dna")
+            hud_controller.set_3d_model("quantum_dna")
+            return True, "Projecting 3D Quantum DNA Double Helix on the holographic projector, sir."
+
+        if any(p in clean_lower for p in [
+            "launch a specific 3d model on your secondary display",
+            "launch 3d model on secondary display", "launch a 3d model on secondary display",
+            "launch 3d model on external display", "launch 3d model on second screen",
             "project to secondary monitor", "project to external display", "project to secondary display",
             "project to external projector", "project to second screen", "project on projector", "project on external display"
         ]):
             from core.projector_system import projector_system
             monitors = projector_system.enumerate_monitors()
+            target_idx = 1 if len(monitors) > 1 else 0
+            chosen_model = "neural_mesh"
+            for m_cand in ["neural_mesh", "planetary_radar", "quantum_dna", "gauntlet", "emitter", "tesseract", "helmet", "reactor", "globe", "drone"]:
+                if m_cand in clean_lower or m_cand.replace("_", " ") in clean_lower:
+                    chosen_model = m_cand
+                    break
+            projector_system.activate_projector(mode="standard", model=chosen_model, monitor_index=target_idx)
             if len(monitors) > 1:
-                projector_system.set_target_monitor(1)
-                return True, f"Projector output successfully routed to External Display / Secondary Monitor #{1}, sir."
+                return True, f"Projector output successfully routed to External Display / Secondary Monitor #{target_idx} displaying 3D {chosen_model.upper()}, sir."
             else:
-                projector_system.set_target_monitor(0)
-                return True, "Only one primary display was detected, sir. 3D projection is active on the primary display."
+                return True, f"Only one primary display was detected, sir. 3D Holographic Projector activated displaying {chosen_model.upper()} on primary display (simulated secondary routing)."
 
         if any(p in clean_lower for p in [
             "increase projector depth", "increase projector parallax", "more 3d depth", "increase 3d depth"

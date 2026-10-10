@@ -44,7 +44,7 @@ class ProjectorController:
         success = self.system.set_3d_model(model)
         if success:
             return f"Projector 3D wireframe mesh shifted to: {model.upper()}."
-        return f"Unknown 3D model '{model}'. Choose from: helmet, reactor, globe, tesseract, drone, gauntlet, emitter."
+        return f"Unknown 3D model '{model}'. Choose from: helmet, reactor, globe, tesseract, drone, gauntlet, emitter, neural_mesh, planetary_radar, quantum_dna."
 
     def set_monitor(self, monitor_index: int) -> str:
         monitors = self.system.enumerate_monitors()

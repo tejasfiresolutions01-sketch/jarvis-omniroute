@@ -220,9 +220,20 @@ class ProjectorSystem:
             try:
                 import ctypes
                 hwnd = ctypes.windll.user32.FindWindowW(None, getattr(config, "PROJECTOR_WINDOW_TITLE", "J.A.R.V.I.S. // 3D HOLOGRAPHIC PROJECTOR SYSTEM"))
-                return bool(hwnd)
+                if hwnd:
+                    return True
             except Exception:
                 pass
+
+        try:
+            import psutil
+            for p in psutil.process_iter(attrs=["name", "cmdline"]):
+                cmdline = p.info.get("cmdline") or []
+                if any("ui.projector_window" in arg for arg in cmdline):
+                    return True
+        except Exception:
+            pass
+
         return False
 
     def send_ipc_command(self, action: str, **kwargs) -> bool:
