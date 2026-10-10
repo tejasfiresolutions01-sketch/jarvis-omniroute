@@ -8,6 +8,7 @@ import math
 import os
 import unittest
 from unittest.mock import MagicMock, patch
+import numpy as np
 
 from core.local_intelligence import local_intelligence
 from core.projector_system import ProjectorSystem, projector_system
@@ -24,13 +25,55 @@ class TestProjectorSystem(unittest.TestCase):
 
     def test_mesh_library_models(self):
         """Validates all procedural 3D models have valid geometry and connectivity."""
-        models = ["helmet", "reactor", "globe", "tesseract", "drone", "gauntlet", "emitter"]
+        models = [
+            "helmet", "reactor", "globe", "tesseract", "drone", "gauntlet", "emitter",
+            "neural_mesh", "planetary_radar", "quantum_dna"
+        ]
         for m in models:
             mesh = ProjectorMeshLibrary.get_mesh(m)
             self.assertIsNotNone(mesh, f"Failed to retrieve mesh for {m}")
             self.assertGreater(len(mesh.vertices), 0, f"No vertices for {m}")
             self.assertGreater(len(mesh.edges), 0, f"No edges for {m}")
             self.assertIsInstance(mesh.highlight_nodes, set)
+
+    def test_keystone_bilinear_warp_correction(self):
+        """Validates 4-corner bilinear keystone adjustment and interpolation math."""
+        engine = Projector3DEngine()
+        self.assertEqual(engine.keystone_corners["TL"], (0.0, 0.0))
+        self.assertEqual(engine.keystone_corners["BR"], (1.0, 1.0))
+
+        # Adjust TL corner inwards
+        engine.set_keystone_corner("TL", 0.1, 0.1)
+        self.assertEqual(engine.keystone_corners["TL"], (0.1, 0.1))
+
+        # Cycle corner
+        next_c = engine.cycle_keystone_corner()
+        self.assertEqual(next_c, "TR")
+
+        # Nudge corner
+        engine.adjust_keystone_corner("TR", -0.05, 0.05)
+        self.assertEqual(engine.keystone_corners["TR"], (0.95, 0.05))
+
+        # Bilinear warp mapping
+        x_pts = np.array([0.0, 500.0, 1000.0])
+        y_pts = np.array([0.0, 400.0, 800.0])
+        wx, wy = engine.apply_keystone(x_pts, y_pts, w=1000, h=800)
+        self.assertEqual(len(wx), 3)
+        self.assertEqual(len(wy), 3)
+        # Check warped top-left
+        self.assertAlmostEqual(wx[0], 100.0, delta=1.0)
+        self.assertAlmostEqual(wy[0], 80.0, delta=1.0)
+
+        # Reset keystone
+        engine.reset_keystone()
+        self.assertEqual(engine.keystone_corners["TL"], (0.0, 0.0))
+
+    def test_spatial_continuous_orientation(self):
+        """Validates 6-DoF continuous spatial orientation updates."""
+        ok = self.system.update_spatial_orientation(delta_yaw=0.15, delta_pitch=-0.10)
+        self.assertTrue(ok)
+        st = self.system.get_state()
+        self.assertFalse(st["auto_spin"])
 
     def test_state_management(self):
         """Verifies state retrieval and atomic updates."""

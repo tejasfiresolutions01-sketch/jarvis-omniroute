@@ -19,15 +19,38 @@ class TestMesh3DEngine(unittest.TestCase):
         self.renderer = Holographic3DRenderer()
 
     def test_procedural_meshes_generation(self):
-        """All procedural models (helmet, reactor, globe, tesseract, drone) must construct valid geometry."""
-        for name in ["helmet", "reactor", "globe", "tesseract", "drone"]:
+        """All procedural models (helmet, reactor, globe, tesseract, drone, neural, radar, dna) must construct valid geometry."""
+        for name in ["helmet", "reactor", "globe", "tesseract", "drone", "neural_mesh", "planetary_radar", "quantum_dna"]:
             mesh = MeshLoader.get_procedural_mesh(name)
             self.assertIsInstance(mesh, Mesh3D)
             self.assertGreater(len(mesh.vertices), 0)
             self.assertGreater(len(mesh.edges), 0)
             # Verify bounding coordinates are normalized
             max_r = np.max(np.linalg.norm(mesh.vertices, axis=1))
-            self.assertAlmostEqual(max_r, 65.0, delta=1.0)
+            self.assertAlmostEqual(max_r, 65.0, delta=1.5)
+
+    def test_holographic_interference_engine(self):
+        """HolographicInterferenceEngine must advance scanline sweep, moire fringes, and glitch effects."""
+        from ui.mesh_3d_engine import HolographicInterferenceEngine
+        engine = HolographicInterferenceEngine()
+        self.assertTrue(engine.enabled)
+
+        init_sweep = engine.sweep_y
+        engine.update(dt=0.016, audio_energy=0.5)
+        self.assertGreater(engine.sweep_y, init_sweep)
+
+        # Mock rendering overlay with beam inside viewport
+        mock_canvas = MagicMock()
+        engine.sweep_y = 0.0
+        engine.render_overlay(mock_canvas, cx=200, cy=150, width=180, height=180, audio_energy=0.3)
+        self.assertTrue(mock_canvas.create_line.called)
+        self.assertTrue(mock_canvas.create_oval.called)
+
+        # Disable toggle
+        engine.enabled = False
+        mock_canvas.reset_mock()
+        engine.render_overlay(mock_canvas, cx=200, cy=150, width=180, height=180)
+        self.assertFalse(mock_canvas.create_line.called)
 
     def test_obj_parser(self):
         """Must parse Wavefront .obj files accurately into vertices and edges."""

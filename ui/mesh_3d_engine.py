@@ -14,6 +14,7 @@ import math
 import os
 import re
 import struct
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
@@ -280,6 +281,111 @@ class MeshLoader:
             mesh.normalize(65.0)
             return mesh
 
+        elif m in ["neural_mesh", "neural", "network", "constellation"]:
+            # J.A.R.V.I.S. Neural Architecture Constellation Mesh
+            nodes = [
+                (0, 0, 0),         # 0: Core Coordinator
+                (35, 20, 25),      # 1: VAD Subsystem
+                (-35, 20, 25),     # 2: Local SLM
+                (0, 48, -20),      # 3: Cognitive Memory
+                (-38, -20, 20),    # 4: Vision Copilot
+                (38, -20, 20),     # 5: Autonomous Device Control
+                (0, -42, 28),      # 6: Hologram Sentinel
+                (28, 32, -35),     # 7: Consensus Reviewer
+                (-28, 32, -35),    # 8: Business Automation
+                (42, 0, -15),      # 9: System Orchestrator
+                (-42, 0, -15),     # 10: Hugging Face Cognitive Hub
+                (0, 0, 48)         # 11: Asimov Guard Sentinel
+            ]
+            for i in range(8):
+                ang = i * (math.pi * 2 / 8)
+                nodes.append((55 * math.cos(ang), 15 * math.sin(i * 1.5), 55 * math.sin(ang)))
+
+            edges = [
+                (0, 1), (0, 2), (0, 3), (0, 4), (0, 5), (0, 6), (0, 7), (0, 8), (0, 9), (0, 10), (0, 11),
+                (1, 2), (2, 4), (4, 6), (6, 5), (5, 1),
+                (3, 7), (7, 9), (9, 5), (3, 8), (8, 10), (10, 4),
+                (11, 1), (11, 2), (11, 6), (7, 8), (9, 10)
+            ]
+            for i in range(8):
+                idx = 12 + i
+                next_idx = 12 + ((i + 1) % 8)
+                edges.append((idx, next_idx))
+                edges.append((idx, (i % 11) + 1))
+
+            mesh = Mesh3D("Neural Architecture Mesh", np.array(nodes), edges, highlight_nodes=[0, 11, 1, 2, 3])
+            mesh.normalize(65.0)
+            return mesh
+
+        elif m in ["planetary_radar", "radar", "defense"]:
+            # Planetary Defense Radar Sphere with sweep line and target blips
+            nodes = []
+            edges = []
+            for r in [20, 40, 60]:
+                start = len(nodes)
+                for seg in range(16):
+                    ang = seg * (math.pi * 2 / 16)
+                    nodes.append([r * math.cos(ang), 0, r * math.sin(ang)])
+                for seg in range(16):
+                    edges.append((start + seg, start + ((seg + 1) % 16)))
+
+            c_start = len(nodes)
+            nodes.extend([(65, 0, 0), (-65, 0, 0), (0, 0, 65), (0, 0, -65)])
+            edges.extend([(c_start, c_start + 1), (c_start + 2, c_start + 3)])
+
+            for y_off in [-30, 30]:
+                r = 50
+                start = len(nodes)
+                for seg in range(12):
+                    ang = seg * (math.pi * 2 / 12)
+                    nodes.append([r * math.cos(ang), y_off, r * math.sin(ang)])
+                for seg in range(12):
+                    edges.append((start + seg, start + ((seg + 1) % 12)))
+
+            blips_start = len(nodes)
+            nodes.extend([(30, 15, 30), (-25, 25, -20), (35, -20, -30), (0, 35, 45)])
+            highlights = list(range(blips_start, blips_start + 4))
+
+            mesh = Mesh3D("Planetary Defense Radar", np.array(nodes), edges, highlight_nodes=highlights)
+            mesh.normalize(65.0)
+            return mesh
+
+        elif m in ["quantum_dna", "dna", "double_helix"]:
+            # Procedural Quantum DNA Double Helix
+            nodes = []
+            edges = []
+            num_steps = 20
+            radius = 28.0
+            height_span = 120.0
+            highlights = []
+
+            for i in range(num_steps):
+                t = i / (num_steps - 1)
+                y = (t - 0.5) * height_span
+                angle = t * math.pi * 3.5
+
+                xa = radius * math.cos(angle)
+                za = radius * math.sin(angle)
+                xb = radius * math.cos(angle + math.pi)
+                zb = radius * math.sin(angle + math.pi)
+
+                idx_a = len(nodes)
+                nodes.append([xa, y, za])
+                idx_b = len(nodes)
+                nodes.append([xb, y, zb])
+
+                edges.append((idx_a, idx_b))
+                if i % 3 == 0:
+                    highlights.extend([idx_a, idx_b])
+
+                if i > 0:
+                    edges.append((idx_a - 2, idx_a))
+                    edges.append((idx_b - 2, idx_b))
+
+            mesh = Mesh3D("Quantum DNA Helix", np.array(nodes), edges, highlight_nodes=highlights)
+            mesh.normalize(65.0)
+            return mesh
+
         else:  # "globe" default
             nodes = []
             edges = []
@@ -309,6 +415,89 @@ class MeshLoader:
             return mesh
 
 
+class HolographicInterferenceEngine:
+    """
+    Simulates optical laser wave interference, video transmission glitches,
+    and cathodic scanline sweeps for authentic sci-fi volumetric display.
+    """
+
+    def __init__(self):
+        self.enabled: bool = True
+        self.interference_intensity: float = 0.45
+        self.sweep_y: float = -120.0
+        self.sweep_speed: float = 3.0
+        self.glitch_active: bool = False
+        self.glitch_dx: float = 0.0
+        self._last_glitch_time: float = 0.0
+        self.phase: float = 0.0
+
+    def update(self, dt: float = 0.016, audio_energy: float = 0.0):
+        """Advances scanline sweeps and calculates optical wave interference state."""
+        self.phase += 0.06 + (audio_energy * 0.12)
+        self.sweep_y += self.sweep_speed
+        if self.sweep_y > 150.0:
+            self.sweep_y = -150.0
+
+        # Intermittent video holographic glitch interference
+        now = time.time()
+        if not self.glitch_active and (now - self._last_glitch_time > 2.5) and (audio_energy > 0.20 or np.random.rand() < 0.03):
+            self.glitch_active = True
+            self.glitch_dx = float(np.random.uniform(-12.0, 12.0))
+            self._last_glitch_time = now
+        elif self.glitch_active and (now - self._last_glitch_time > 0.12):
+            self.glitch_active = False
+            self.glitch_dx = 0.0
+
+    def render_overlay(
+        self,
+        canvas: Any,
+        cx: int,
+        cy: int,
+        width: int,
+        height: int,
+        primary_color: str = "#00f0ff",
+        secondary_color: str = "#ff2a55",
+        audio_energy: float = 0.0,
+    ):
+        """
+        Renders optical interference fringes, laser scanline beam, and chromatic glitch slice.
+        """
+        if not self.enabled:
+            return
+
+        half_w = max(40, width // 2)
+        half_h = max(40, height // 2)
+        top = cy - half_h
+        bottom = cy + half_h
+        left = cx - half_w
+        right = cx + half_w
+
+        # 1. Optical Laser Sweep Beam
+        beam_y = cy + int(self.sweep_y)
+        if top <= beam_y <= bottom:
+            pulse_w = 2 if audio_energy > 0.25 else 1
+            canvas.create_line(left, beam_y, right, beam_y, fill=primary_color, width=pulse_w, dash=(8, 4))
+            canvas.create_line(left + 2, beam_y + 1, right + 2, beam_y + 1, fill=secondary_color, width=1, dash=(4, 6))
+
+        # 2. Holographic Glitch Jitter Slice
+        if self.glitch_active and abs(self.glitch_dx) > 1.0:
+            slice_y = cy + int(self.glitch_dx * 3) % max(1, half_h)
+            slice_h = int(abs(self.glitch_dx) * 1.5) + 6
+            canvas.create_rectangle(
+                left + self.glitch_dx, slice_y - slice_h,
+                right + self.glitch_dx, slice_y + slice_h,
+                outline=secondary_color, width=1, dash=(3, 3)
+            )
+
+        # 3. Ambient Optical Wave Interference Fringes (Moiré)
+        halo_radius = int(min(half_w, half_h) * (0.92 + 0.08 * math.sin(self.phase)))
+        canvas.create_oval(
+            cx - halo_radius, cy - halo_radius,
+            cx + halo_radius, cy + halo_radius,
+            outline=primary_color, width=1, dash=(2, 6)
+        )
+
+
 class Holographic3DRenderer:
     """
     Renders 3D meshes with multi-pass neon bloom, depth fading, and physics inertia.
@@ -326,6 +515,7 @@ class Holographic3DRenderer:
         self.friction: float = 0.95
         self.auto_spin: bool = True
         self.bloom_enabled: bool = True
+        self.interference: HolographicInterferenceEngine = HolographicInterferenceEngine()
 
     def set_mesh(self, mesh_or_name: Any):
         """Sets active mesh by name or Mesh3D object."""
@@ -366,6 +556,10 @@ class Holographic3DRenderer:
 
         # Clamp pitch to avoid extreme gimbal flipping
         self.pitch = max(-1.2, min(1.2, self.pitch))
+
+        # Advance optical interference
+        if hasattr(self, "interference") and self.interference:
+            self.interference.update(dt=dt)
 
     def project_and_render(
         self,
@@ -456,6 +650,43 @@ class Holographic3DRenderer:
             is_hl = idx in mesh.highlight_nodes
             node_col = sec_col if is_hl else primary_col
             canvas.create_oval(x_p - 1.5, y_p - 1.5, x_p + 1.5, y_p + 1.5, fill=node_col, outline="")
+
+        # Pass 5: Sound-Reactive Orbital Particle Halo (Acoustic Aura)
+        if audio_energy > 0.05 or self.bloom_enabled:
+            halo_r = 75.0 * pulse
+            num_halo_pts = 24
+            ang_step = (math.pi * 2) / num_halo_pts
+            for pt_idx in range(num_halo_pts):
+                phi = pt_idx * ang_step + (self.yaw * 0.5)
+                # 3D ring orbit in horizontal plane
+                hx = halo_r * math.cos(phi)
+                hz = halo_r * math.sin(phi)
+                # Rotate with pitch
+                hx2 = hx
+                hy2 = -hz * sin_p
+                hz2 = hz * cos_p
+                h_depth = hz2 + distance
+                h_scale = fov / max(h_depth, 10.0)
+                sp_x = cx + hx2 * h_scale
+                sp_y = cy - hy2 * h_scale
+                dot_size = 1.0 + (pulse * 0.8)
+                canvas.create_oval(
+                    sp_x - dot_size, sp_y - dot_size,
+                    sp_x + dot_size, sp_y + dot_size,
+                    fill=glow_col, outline=""
+                )
+
+        # Pass 6: Video Holographic Interference & Laser Scanline Sweep
+        self.interference.render_overlay(
+            canvas=canvas,
+            cx=cx,
+            cy=cy,
+            width=int(180 * self.scale),
+            height=int(180 * self.scale),
+            primary_color=primary_col,
+            secondary_color=sec_col,
+            audio_energy=audio_energy
+        )
 
 
 # Global singleton instance

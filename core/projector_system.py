@@ -47,7 +47,10 @@ class ProjectorSystem:
     """
 
     PROJECTION_MODES = ["standard", "pyramid", "anaglyph", "floating"]
-    SUPPORTED_MODELS = ["helmet", "reactor", "globe", "tesseract", "drone", "gauntlet", "emitter"]
+    SUPPORTED_MODELS = [
+        "helmet", "reactor", "globe", "tesseract", "drone",
+        "gauntlet", "emitter", "neural_mesh", "planetary_radar", "quantum_dna"
+    ]
     PALETTES = ["stark_cyan", "mark_crimson", "quantum_emerald", "plasma_amber", "ultraviolet_violet"]
 
     def __init__(self):
@@ -401,6 +404,10 @@ class ProjectorSystem:
         new_pitch = max(-1.2, min(1.2, curr.get("pitch", 0.2) + delta_pitch))
         self.update_state({"yaw": new_yaw, "pitch": new_pitch, "auto_spin": False})
         return self.send_ipc_command("rotate", yaw=new_yaw, pitch=new_pitch)
+
+    def update_spatial_orientation(self, delta_yaw: float = 0.5, delta_pitch: float = 0.0) -> bool:
+        """Continuously streams 6-DoF spatial yaw and pitch orientation deltas."""
+        return self.rotate_model(delta_yaw=delta_yaw, delta_pitch=delta_pitch)
 
     def toggle_auto_spin(self, state: Optional[bool] = None) -> bool:
         """Pauses or resumes automated 360-degree rotation."""

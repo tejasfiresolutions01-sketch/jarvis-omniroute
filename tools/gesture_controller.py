@@ -111,6 +111,27 @@ class SpatialGestureEngine:
             "defects": num_defects
         }
 
+        # Continuous Mid-Air 6-DoF Spatial Orientation Tracking Stream
+        if len(self._history) >= 2:
+            prev_cx, prev_cy, _, _ = self._history[-2]
+            inst_dx = cx - prev_cx
+            inst_dy = cy - prev_cy
+            norm_dx = inst_dx / float(max(w, 1))
+            norm_dy = inst_dy / float(max(h, 1))
+            telemetry["velocity"] = (norm_dx, norm_dy)
+
+            if (abs(inst_dx) > 2 or abs(inst_dy) > 2) and num_defects >= 2:
+                delta_yaw = norm_dx * 2.5
+                delta_pitch = -norm_dy * 2.5
+                telemetry["spatial_deltas"] = (delta_yaw, delta_pitch)
+                hud_controller.update_spatial_orientation(delta_yaw=delta_yaw, delta_pitch=delta_pitch)
+                try:
+                    from core.projector_system import projector_system
+                    if projector_system.is_projector_open():
+                        projector_system.update_spatial_orientation(delta_yaw=delta_yaw, delta_pitch=delta_pitch)
+                except Exception:
+                    pass
+
         # Check trajectory velocity over history window (~250ms)
         detected_gesture = None
         if len(self._history) >= 4 and (now - self._last_gesture_time > self._cooldown):

@@ -37,6 +37,22 @@ def _attach_to_interactive_desktop():
         pass
 
 
+def _enable_dwm_acrylic(hwnd: int, dark_mode: bool = True):
+    """Applies native Windows DWM Acrylic Blur-Behind and dark mode composition."""
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+        from ctypes import wintypes
+        dwmapi = ctypes.windll.dwmapi
+        dark = wintypes.BOOL(dark_mode)
+        dwmapi.DwmSetWindowAttribute(hwnd, 20, ctypes.byref(dark), ctypes.sizeof(dark))
+        acrylic_type = wintypes.DWORD(3)
+        dwmapi.DwmSetWindowAttribute(hwnd, 38, ctypes.byref(acrylic_type), ctypes.sizeof(acrylic_type))
+    except Exception:
+        pass
+
+
 class TacticalHUD:
     """
     J.A.R.V.I.S. Open-Source Holographic Display & Projector HUD.
@@ -121,6 +137,11 @@ class TacticalHUD:
         self.root.geometry(f"{w}x{h}+{x}+{y}")
         self.root.minsize(1080, 700)
         self.root.configure(bg="#000000")
+
+        try:
+            _enable_dwm_acrylic(self.root.winfo_id())
+        except Exception:
+            pass
 
         # Set application icon if available
         try:
@@ -532,7 +553,10 @@ class TacticalHUD:
             ("⚛ REACTOR", "reactor"),
             ("🌍 GLOBE", "globe"),
             ("🧊 TESSERACT", "tesseract"),
-            ("✈ DRONE", "drone")
+            ("✈ DRONE", "drone"),
+            ("🧠 NEURAL", "neural_mesh"),
+            ("📡 RADAR", "planetary_radar"),
+            ("🧬 DNA", "quantum_dna"),
         ]
         for lbl, mid in models:
             b = tk.Button(

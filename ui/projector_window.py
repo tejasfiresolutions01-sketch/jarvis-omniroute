@@ -41,6 +41,24 @@ def _attach_to_interactive_desktop():
             pass
 
 
+def _enable_dwm_acrylic(hwnd: int, dark_mode: bool = True):
+    """Applies native Windows DWM Acrylic Blur-Behind and immersive dark composition."""
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+        from ctypes import wintypes
+        dwmapi = ctypes.windll.dwmapi
+        # DWMWA_USE_IMMERSIVE_DARK_MODE = 20
+        dark = wintypes.BOOL(dark_mode)
+        dwmapi.DwmSetWindowAttribute(hwnd, 20, ctypes.byref(dark), ctypes.sizeof(dark))
+        # DWMWA_SYSTEMBACKDROP_TYPE = 38 (3 = Acrylic)
+        acrylic_type = wintypes.DWORD(3)
+        dwmapi.DwmSetWindowAttribute(hwnd, 38, ctypes.byref(acrylic_type), ctypes.sizeof(acrylic_type))
+    except Exception:
+        pass
+
+
 class ProjectorWindow:
     """
     Dedicated 3D Holographic Optical Projector Interface.
@@ -110,6 +128,12 @@ class ProjectorWindow:
             x = mx + max(0, (mw - w) // 2)
             y = my + max(0, (mh - h) // 2)
             self.root.geometry(f"{w}x{h}+{x}+{y}")
+
+        try:
+            self.root.update_idletasks()
+            _enable_dwm_acrylic(self.root.winfo_id())
+        except Exception:
+            pass
 
         if self.is_transparent:
             self._apply_transparency(True)
@@ -203,6 +227,32 @@ class ProjectorWindow:
         )
         btn_mesh.pack(side="left", padx=3)
 
+        btn_keystone = tk.Button(
+            self.dock_frame,
+            text="📐 KEYSTONE (K)",
+            font=("Consolas", 8, "bold"),
+            fg="#bb44ff",
+            bg="#180424",
+            relief="flat",
+            padx=6,
+            pady=2,
+            command=self.toggle_keystone_calibration,
+        )
+        btn_keystone.pack(side="left", padx=3)
+
+        btn_interf = tk.Button(
+            self.dock_frame,
+            text="⚡ INTERFERENCE (I)",
+            font=("Consolas", 8, "bold"),
+            fg="#ff2a55",
+            bg="#24050d",
+            relief="flat",
+            padx=6,
+            pady=2,
+            command=self.toggle_interference,
+        )
+        btn_interf.pack(side="left", padx=3)
+
         self._update_osd_positions()
 
     def _update_osd_positions(self):
@@ -238,6 +288,17 @@ class ProjectorWindow:
         self.root.bind("<plus>", lambda e: self.adjust_depth(1.0))
         self.root.bind("<minus>", lambda e: self.adjust_depth(-1.0))
         self.root.bind("<equal>", lambda e: self.adjust_depth(1.0))
+        self.root.bind("<k>", lambda e: self.toggle_keystone_calibration())
+        self.root.bind("<K>", lambda e: self.toggle_keystone_calibration())
+        self.root.bind("<i>", lambda e: self.toggle_interference())
+        self.root.bind("<I>", lambda e: self.toggle_interference())
+        self.root.bind("<Tab>", lambda e: self.cycle_keystone_corner())
+        self.root.bind("<r>", lambda e: self.reset_keystone())
+        self.root.bind("<R>", lambda e: self.reset_keystone())
+        self.root.bind("<Up>", lambda e: self.adjust_active_keystone(0.0, -0.015))
+        self.root.bind("<Down>", lambda e: self.adjust_active_keystone(0.0, 0.015))
+        self.root.bind("<Left>", lambda e: self.adjust_active_keystone(-0.015, 0.0))
+        self.root.bind("<Right>", lambda e: self.adjust_active_keystone(0.015, 0.0))
 
         self.root.bind("<Configure>", lambda e: self._on_resize())
         self.root.protocol("WM_DELETE_WINDOW", self.close_window)
@@ -340,6 +401,30 @@ class ProjectorWindow:
         self.engine.parallax_offset = max(0.0, min(25.0, self.engine.parallax_offset + delta))
         projector_system.update_state({"parallax": self.engine.parallax_offset})
 
+    def toggle_keystone_calibration(self):
+        """Toggles 4-corner bilinear keystone calibration mode."""
+        self.engine.calibration_mode = not self.engine.calibration_mode
+        projector_system.update_state({"keystone_calibration": self.engine.calibration_mode})
+
+    def cycle_keystone_corner(self):
+        """Cycles active keystone calibration corner (TL, TR, BR, BL)."""
+        self.engine.cycle_keystone_corner()
+
+    def reset_keystone(self):
+        """Resets keystone calibration warp to rectangle."""
+        self.engine.reset_keystone()
+
+    def adjust_active_keystone(self, dx: float, dy: float):
+        """Nudges the active keystone corner."""
+        if self.engine.calibration_mode:
+            self.engine.adjust_keystone_corner(self.engine.active_corner, dx, dy)
+
+    def toggle_interference(self):
+        """Toggles video holographic optical wave interference."""
+        if hasattr(self.engine, "interference") and self.engine.interference:
+            self.engine.interference.enabled = not self.engine.interference.enabled
+            projector_system.update_state({"interference_enabled": self.engine.interference.enabled})
+
     def close_window(self):
         """Exits the projector window."""
         self._is_running = False
@@ -388,6 +473,14 @@ class ProjectorWindow:
             self.engine.auto_spin = bool(kwargs.get("auto_spin", True))
         elif action == "set_parallax":
             self.engine.parallax_offset = float(kwargs.get("parallax", 6.0))
+        elif action == "toggle_keystone":
+            self.toggle_keystone_calibration()
+        elif action == "toggle_interference":
+            self.toggle_interference()
+        elif action == "reset_keystone":
+            self.reset_keystone()
+        elif action == "set_keystone_corner":
+            self.engine.set_keystone_corner(kwargs.get("corner", "TL"), kwargs.get("x", 0.0), kwargs.get("y", 0.0))
         elif action == "rotate":
             self.engine.yaw = float(kwargs.get("yaw", self.engine.yaw))
             self.engine.pitch = float(kwargs.get("pitch", self.engine.pitch))
@@ -437,9 +530,13 @@ class ProjectorWindow:
 
                 # Update metadata OSD
                 if self.show_osd and not self.is_transparent:
+                    interf_str = "ON" if (hasattr(self.engine, "interference") and self.engine.interference.enabled) else "OFF"
+                    keystone_str = "CALIB" if self.engine.calibration_mode else ("WARP" if (self.engine.keystone_corners["TL"] != (0.0, 0.0) or self.engine.keystone_corners["TR"] != (1.0, 0.0)) else "FLAT")
                     meta_text = (
                         f"MODE: [{self.mode.upper()}] | "
                         f"MODEL: [{self.active_model_name.upper()}] | "
+                        f"KEYSTONE: [{keystone_str}] | "
+                        f"INTERF: [{interf_str}] | "
                         f"PARALLAX: {self.engine.parallax_offset:.1f}px | "
                         f"YAW: {math.degrees(self.engine.yaw):.0f}°"
                     )
@@ -460,7 +557,7 @@ class ProjectorWindow:
 def main():
     parser = argparse.ArgumentParser(description="J.A.R.V.I.S. 3D Holographic Projector System")
     parser.add_argument("--mode", default="standard", help="standard | pyramid | anaglyph | floating")
-    parser.add_argument("--model", default="helmet", help="helmet | reactor | globe | tesseract | drone | gauntlet | emitter")
+    parser.add_argument("--model", default="helmet", help="helmet | reactor | globe | tesseract | drone | gauntlet | emitter | neural_mesh | planetary_radar | quantum_dna")
     parser.add_argument("--monitor", type=int, default=0, help="Target monitor index (0=primary)")
     parser.add_argument("--fullscreen", action="store_true", help="Launch in borderless fullscreen mode")
     args = parser.parse_args()

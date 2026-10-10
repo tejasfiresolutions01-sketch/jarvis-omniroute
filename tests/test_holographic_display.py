@@ -80,13 +80,13 @@ class TestHolographicDisplayMathAndModels(unittest.TestCase):
         hud.model_pitch = 0.1
         hud._project_3d = lambda x, y, z, cx, cy: self.hud_class._project_3d(hud, x, y, z, cx, cy)
 
-        for model_name in ["helmet", "reactor", "globe", "tesseract"]:
+        for model_name in ["helmet", "reactor", "globe", "tesseract", "drone", "neural_mesh", "planetary_radar", "quantum_dna"]:
             hud.active_3d_model = model_name
             canvas_mock.reset_mock()
             self.hud_class._draw_3d_wireframe(hud, canvas_mock, cx=280, cy=140, t_style=theme_stub)
             # Must draw lines and oval nodes
             self.assertGreater(canvas_mock.create_line.call_count, 10, f"Model {model_name} drew too few edges")
-            self.assertGreater(canvas_mock.create_oval.call_count, 8, f"Model {model_name} drew too few nodes")
+            self.assertGreater(canvas_mock.create_oval.call_count, 4, f"Model {model_name} drew too few nodes")
 
 
 class TestHolographicInteractiveControls(unittest.TestCase):

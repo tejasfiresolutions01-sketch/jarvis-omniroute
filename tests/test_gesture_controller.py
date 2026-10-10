@@ -35,6 +35,19 @@ class TestGestureController(unittest.TestCase):
         self.assertAlmostEqual(cx, 320, delta=20)
         self.assertAlmostEqual(cy, 240, delta=20)
 
+    def test_continuous_spatial_velocity_stream(self):
+        """Must calculate frame-to-frame optical velocity for continuous 6-DoF tracking."""
+        frame1 = np.zeros((480, 640, 3), dtype=np.uint8)
+        cv2.ellipse(frame1, (300, 240), (70, 110), 0, 0, 360, (100, 150, 220), -1)
+        self.engine.analyze_frame(frame1)
+
+        frame2 = np.zeros((480, 640, 3), dtype=np.uint8)
+        cv2.ellipse(frame2, (330, 240), (70, 110), 0, 0, 360, (100, 150, 220), -1)
+        _, meta2 = self.engine.analyze_frame(frame2)
+        self.assertIn("velocity", meta2)
+        vx, vy = meta2["velocity"]
+        self.assertGreater(vx, 0.0)
+
     def test_horizontal_swipe_right_detection(self):
         """Must detect swipe_right gesture when hand moves rapidly to the right."""
         self.engine._history.clear()

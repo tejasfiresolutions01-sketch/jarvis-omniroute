@@ -14,7 +14,7 @@ import os
 from typing import Any, Dict, List, Optional, Set, Tuple
 import numpy as np
 
-from ui.mesh_3d_engine import Mesh3D, MeshLoader
+from ui.mesh_3d_engine import Mesh3D, MeshLoader, HolographicInterferenceEngine
 
 
 class ProjectorMeshLibrary:
@@ -177,6 +177,20 @@ class Projector3DEngine:
         self.vel_pitch: float = 0.0
         self.friction: float = 0.94
 
+        # 4-Corner Bilinear Keystone Correction & Calibration
+        self.keystone_corners: Dict[str, Tuple[float, float]] = {
+            "TL": (0.0, 0.0),
+            "TR": (1.0, 0.0),
+            "BR": (1.0, 1.0),
+            "BL": (0.0, 1.0),
+        }
+        self.keystone_enabled: bool = True
+        self.calibration_mode: bool = False
+        self.active_corner: str = "TL"
+
+        # Holographic Optical Wave & Video Interference Engine
+        self.interference: HolographicInterferenceEngine = HolographicInterferenceEngine()
+
     def set_mesh(self, mesh_or_name: Any):
         """Sets active mesh by name or Mesh3D object."""
         if isinstance(mesh_or_name, str):
@@ -184,8 +198,115 @@ class Projector3DEngine:
         elif isinstance(mesh_or_name, Mesh3D):
             self.active_mesh = mesh_or_name
 
+    def set_keystone_corner(self, corner: str, x_norm: float, y_norm: float):
+        """Sets normalized position [0..1] of a keystone corner."""
+        c = corner.upper().strip()
+        if c in self.keystone_corners:
+            self.keystone_corners[c] = (max(0.0, min(1.0, float(x_norm))), max(0.0, min(1.0, float(y_norm))))
+
+    def adjust_keystone_corner(self, corner: str, dx: float, dy: float):
+        """Nudges the coordinates of a keystone corner."""
+        c = corner.upper().strip()
+        if c in self.keystone_corners:
+            ox, oy = self.keystone_corners[c]
+            self.keystone_corners[c] = (max(0.0, min(1.0, ox + dx)), max(0.0, min(1.0, oy + dy)))
+
+    def cycle_keystone_corner(self) -> str:
+        """Cycles active keystone calibration corner: TL -> TR -> BR -> BL."""
+        corners = ["TL", "TR", "BR", "BL"]
+        idx = (corners.index(self.active_corner) + 1) % len(corners) if self.active_corner in corners else 0
+        self.active_corner = corners[idx]
+        return self.active_corner
+
+    def reset_keystone(self):
+        """Resets keystone calibration warp to standard rectangle."""
+        self.keystone_corners = {
+            "TL": (0.0, 0.0),
+            "TR": (1.0, 0.0),
+            "BR": (1.0, 1.0),
+            "BL": (0.0, 1.0),
+        }
+
+    def apply_keystone(
+        self,
+        screen_x: np.ndarray,
+        screen_y: np.ndarray,
+        w: int,
+        h: int,
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Applies 4-corner bilinear warp interpolation to pre-distort projection
+        for non-perpendicular surfaces, glass prisms, and trapezoidal screens.
+        """
+        if not self.keystone_enabled or len(screen_x) == 0:
+            return screen_x, screen_y
+
+        u = np.clip(screen_x / max(w, 1), 0.0, 1.0)
+        v = np.clip(screen_y / max(h, 1), 0.0, 1.0)
+
+        tl_x, tl_y = self.keystone_corners["TL"][0] * w, self.keystone_corners["TL"][1] * h
+        tr_x, tr_y = self.keystone_corners["TR"][0] * w, self.keystone_corners["TR"][1] * h
+        br_x, br_y = self.keystone_corners["BR"][0] * w, self.keystone_corners["BR"][1] * h
+        bl_x, bl_y = self.keystone_corners["BL"][0] * w, self.keystone_corners["BL"][1] * h
+
+        top_x = (1.0 - u) * tl_x + u * tr_x
+        top_y = (1.0 - u) * tl_y + u * tr_y
+        bot_x = (1.0 - u) * bl_x + u * br_x
+        bot_y = (1.0 - u) * bl_y + u * br_y
+
+        warped_x = (1.0 - v) * top_x + v * bot_x
+        warped_y = (1.0 - v) * top_y + v * bot_y
+
+        return warped_x, warped_y
+
+    def render_keystone_calibration_overlay(
+        self,
+        canvas: Any,
+        w: int,
+        h: int,
+        primary_color: str = "#00f0ff",
+        secondary_color: str = "#ffd700",
+    ):
+        """Renders interactive 4-corner keystone bounding grid and handles."""
+        if not self.calibration_mode:
+            return
+
+        corners_px = {
+            c: (int(self.keystone_corners[c][0] * w), int(self.keystone_corners[c][1] * h))
+            for c in ["TL", "TR", "BR", "BL"]
+        }
+
+        # Quad Outline
+        pts = [
+            corners_px["TL"][0], corners_px["TL"][1],
+            corners_px["TR"][0], corners_px["TR"][1],
+            corners_px["BR"][0], corners_px["BR"][1],
+            corners_px["BL"][0], corners_px["BL"][1],
+        ]
+        canvas.create_polygon(*pts, outline=primary_color, fill="", width=2, dash=(6, 4))
+
+        # Diagonal Crosshair lines
+        canvas.create_line(corners_px["TL"][0], corners_px["TL"][1], corners_px["BR"][0], corners_px["BR"][1], fill=primary_color, dash=(2, 6))
+        canvas.create_line(corners_px["TR"][0], corners_px["TR"][1], corners_px["BL"][0], corners_px["BL"][1], fill=primary_color, dash=(2, 6))
+
+        # Corner calibration handles
+        for c, (px, py) in corners_px.items():
+            is_active = (c == self.active_corner)
+            h_col = secondary_color if is_active else primary_color
+            r = 10 if is_active else 6
+            canvas.create_oval(px - r, py - r, px + r, py + r, outline=h_col, width=2 if is_active else 1, fill="#000000")
+            canvas.create_text(px + (14 if "L" in c else -14), py + (14 if "T" in c else -14), text=f"[{c}]", font=("Consolas", 9, "bold"), fill=h_col)
+
+        # Center Status Banner
+        canvas.create_text(
+            w // 2, 45,
+            text=f"⫸ KEYSTONE CALIBRATION MODE: ACTIVE [{self.active_corner}] (ARROWS: WARP | TAB: CYCLE | R: RESET | K: EXIT)",
+            font=("Consolas", 10, "bold"),
+            fill=secondary_color,
+        )
+
     def update_physics(self):
-        """Advances rotational physics and momentum."""
+        """Advances rotational physics, momentum, and optical wave interference."""
         if self.auto_spin:
             self.yaw = (self.yaw + self.spin_speed) % (2 * math.pi)
         else:
@@ -199,6 +320,9 @@ class Projector3DEngine:
                 self.vel_pitch = 0.0
 
         self.pitch = max(-1.2, min(1.2, self.pitch))
+
+        if hasattr(self, "interference") and self.interference:
+            self.interference.update(dt=0.016)
 
     def _transform_vertices(
         self,
@@ -269,6 +393,11 @@ class Projector3DEngine:
         screen_x = cx + px
         screen_y = cy + py
 
+        w = max(100, cx * 2)
+        h = max(100, cy * 2)
+        if self.keystone_enabled:
+            screen_x, screen_y = self.apply_keystone(screen_x, screen_y, w, h)
+
         # Z-Sort Edges (Painter's algorithm)
         edge_depths = []
         for i, j in mesh.edges:
@@ -305,6 +434,23 @@ class Projector3DEngine:
                 screen_x[idx] + 1.5, screen_y[idx] + 1.5,
                 fill=col, outline=""
             )
+
+        # Video Holographic Interference & Laser Scanline Sweep
+        if hasattr(self, "interference") and self.interference:
+            self.interference.render_overlay(
+                canvas=canvas,
+                cx=cx,
+                cy=cy,
+                width=int(240 * self.scale * scale_mod),
+                height=int(240 * self.scale * scale_mod),
+                primary_color=colors["primary"],
+                secondary_color=colors["secondary"],
+                audio_energy=audio_energy,
+            )
+
+        # Keystone Calibration Overlay
+        if self.calibration_mode:
+            self.render_keystone_calibration_overlay(canvas, w, h, colors["primary"], colors["secondary"])
 
     def render_pyramid_4way(
         self,
@@ -361,6 +507,9 @@ class Projector3DEngine:
             screen_x = q_cx + rot_px
             screen_y = q_cy + rot_py
 
+            if self.keystone_enabled:
+                screen_x, screen_y = self.apply_keystone(screen_x, screen_y, w, h)
+
             # Render wireframe edges
             for i, j in mesh.edges:
                 is_hl = (i in mesh.highlight_nodes) and (j in mesh.highlight_nodes)
@@ -370,6 +519,22 @@ class Projector3DEngine:
                     screen_x[j], screen_y[j],
                     fill=col, width=1
                 )
+
+        # Optical Wave Interference Fringes
+        if hasattr(self, "interference") and self.interference:
+            self.interference.render_overlay(
+                canvas=canvas,
+                cx=cx,
+                cy=cy,
+                width=int(diamond_s * 4),
+                height=int(diamond_s * 4),
+                primary_color=colors["primary"],
+                secondary_color=colors["secondary"],
+                audio_energy=audio_energy,
+            )
+
+        if self.calibration_mode:
+            self.render_keystone_calibration_overlay(canvas, w, h, colors["primary"], colors["secondary"])
 
     def render_anaglyph_3d(
         self,
@@ -407,6 +572,12 @@ class Projector3DEngine:
         scr_xr = (cx + parallax) + px_r
         scr_yr = cy + py_r
 
+        w = max(100, cx * 2)
+        h = max(100, cy * 2)
+        if self.keystone_enabled:
+            scr_xl, scr_yl = self.apply_keystone(scr_xl, scr_yl, w, h)
+            scr_xr, scr_yr = self.apply_keystone(scr_xr, scr_yr, w, h)
+
         # Pass 1: Left Eye Red Channel (#ff0044)
         for i, j in mesh.edges:
             canvas.create_line(
@@ -429,6 +600,22 @@ class Projector3DEngine:
                 mid_x = (scr_xl[idx] + scr_xr[idx]) / 2.0
                 mid_y = (scr_yl[idx] + scr_yr[idx]) / 2.0
                 canvas.create_oval(mid_x - 2, mid_y - 2, mid_x + 2, mid_y + 2, fill="#ffffff", outline="")
+
+        # Video Holographic Interference
+        if hasattr(self, "interference") and self.interference:
+            self.interference.render_overlay(
+                canvas=canvas,
+                cx=cx,
+                cy=cy,
+                width=int(240 * self.scale),
+                height=int(240 * self.scale),
+                primary_color="#00f0ff",
+                secondary_color="#ff2a55",
+                audio_energy=audio_energy,
+            )
+
+        if self.calibration_mode:
+            self.render_keystone_calibration_overlay(canvas, w, h, "#00f0ff", "#ffd700")
 
 
 # Global singleton instance

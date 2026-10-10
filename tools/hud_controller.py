@@ -31,7 +31,11 @@ _LOCK = threading.Lock()
 class HUDController:
     """Controls and synchronizes the J.A.R.V.I.S. Tactical Holographic HUD."""
 
-    VALID_MODELS = ["helmet", "reactor", "globe", "tesseract", "drone", "custom"]
+    VALID_MODELS = [
+        "helmet", "reactor", "globe", "tesseract", "drone",
+        "gauntlet", "emitter", "neural_mesh", "planetary_radar", "quantum_dna",
+        "custom"
+    ]
 
     def __init__(self):
         self._active_hud = None
@@ -236,6 +240,10 @@ class HUDController:
 
     def rotate_model(self, delta_yaw: float = 0.5, delta_pitch: float = 0.0) -> bool:
         return self.send_command("rotate", delta_yaw=delta_yaw, delta_pitch=delta_pitch)
+
+    def update_spatial_orientation(self, delta_yaw: float = 0.5, delta_pitch: float = 0.0) -> bool:
+        """Streams real-time continuous 6-DoF spatial velocity or orientation changes."""
+        return self.rotate_model(delta_yaw=delta_yaw, delta_pitch=delta_pitch)
 
     def reset_3d_view(self) -> bool:
         return self.send_command("reset_view")
