@@ -317,6 +317,16 @@ class LocalNeuralSLM:
         if semantic_ans:
             return semantic_ans
 
+        # 3.5. Stark Global Archive FTS5 query (Sub-1ms STEM Encyclopedia)
+        try:
+            from core.stark_archive import stark_archive
+            archive_results = stark_archive.search(prompt, top_k=1)
+            if archive_results and archive_results[0].bm25_score < -1.0:
+                top_art = archive_results[0].article
+                return f"{top_art.summary} According to the Stark Archive: {top_art.content[:240]}."
+        except Exception:
+            pass
+
         # 4. Contextual memory deduction from stored episodic / cognitive context
         if context:
             clean_p = prompt.lower().strip()
