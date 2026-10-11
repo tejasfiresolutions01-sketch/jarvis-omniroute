@@ -95,8 +95,8 @@ class AudioDuckingEngine:
     Native Windows Master Audio Ducking Controller with safe reentrant nesting.
     """
 
-    def __init__(self, duck_factor: float = 0.28):
-        self.duck_factor = duck_factor  # Lowers system volume to ~28% of original
+    def __init__(self, duck_factor: float = 1.0):
+        self.duck_factor = duck_factor
         self._lock = threading.RLock()
         self._duck_count = 0
         self._saved_volume: Optional[float] = None
@@ -124,8 +124,25 @@ class AudioDuckingEngine:
             logger.debug(f"Unable to access Windows MMDevice audio endpoint: {e}")
             return None
 
+    def maximize_system_volume(self) -> float:
+        """Sets Windows master endpoint volume to 100% (scalar 1.0)."""
+        vol_iface = self._get_volume_interface()
+        if vol_iface is not None:
+            try:
+                vol_iface.SetMasterVolumeLevelScalar(1.0, None)
+                logger.info("Windows Master Audio Volume maximized to 100% (1.0).")
+                return 1.0
+            except Exception as e:
+                logger.debug(f"Unable to maximize master volume: {e}")
+        return 1.0
+
     def duck(self) -> bool:
-        """Lowers system audio level for speech vocalization."""
+        """Lowers system audio level for speech vocalization if enabled."""
+        import config
+        if not getattr(config, "AUDIO_DUCKING_ENABLED", False):
+            # Ducking disabled to preserve 100% maximum voice output
+            return True
+
         with self._lock:
             if self._duck_count == 0:
                 vol_iface = self._get_volume_interface()

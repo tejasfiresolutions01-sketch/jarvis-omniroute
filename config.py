@@ -26,6 +26,8 @@ USER_NAME = os.getenv("USER_NAME", "Sir")
 TTS_VOICE = os.getenv("TTS_VOICE", "en-GB-RyanNeural")
 TTS_RATE = os.getenv("TTS_RATE", "+0%")
 TTS_PITCH = os.getenv("TTS_PITCH", "+0Hz")
+TTS_VOLUME = os.getenv("TTS_VOLUME", "+100%")
+AUDIO_DUCKING_ENABLED = os.getenv("AUDIO_DUCKING_ENABLED", "false").lower() in ("true", "1", "yes")
 
 def _safe_int(env_name: str, default: int) -> int:
     val = os.getenv(env_name, "")

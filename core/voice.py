@@ -39,6 +39,17 @@ def stop_speaking():
         pass
     is_speaking = False
 
+def maximize_volume() -> float:
+    """Maximizes Windows system master volume and J.A.R.V.I.S. playback mixer channel."""
+    audio_ducking.maximize_system_volume()
+    try:
+        import pygame
+        if pygame.mixer.get_init():
+            pygame.mixer.music.set_volume(1.0)
+    except Exception:
+        pass
+    return 1.0
+
 def is_recently_spoken(text: str, window: float = 6.0) -> bool:
     """
     Checks if given text matches anything recently vocalized by J.A.R.V.I.S.
@@ -335,7 +346,8 @@ def _speak_worker(text: str):
                         text=spoken_text,
                         voice=config.TTS_VOICE,
                         rate=eff_rate,
-                        pitch=eff_pitch
+                        pitch=eff_pitch,
+                        volume=getattr(config, "TTS_VOLUME", "+100%")
                     )
                     with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
                         temp_path = f.name
@@ -344,12 +356,13 @@ def _speak_worker(text: str):
 
                 temp_audio = asyncio.run(_synthesize())
 
-                # Play with pygame
+                # Play with pygame at 100% maximized volume
                 if not pygame.mixer.get_init():
                     prewarm_audio_engine()
                     if not pygame.mixer.get_init():
                         pygame.mixer.init()
                 pygame.mixer.music.load(temp_audio)
+                pygame.mixer.music.set_volume(1.0)
                 pygame.mixer.music.play()
                 while pygame.mixer.music.get_busy() and is_speaking:
                     pygame.time.Clock().tick(10)
@@ -368,11 +381,12 @@ def _speak_worker(text: str):
             except Exception:
                 pass
 
-        # 2. Offline Fallback: Windows SAPI5 (pyttsx3)
+        # 2. Offline Fallback: Windows SAPI5 (pyttsx3 at 100% volume)
         try:
             import pyttsx3
             engine = pyttsx3.init()
             engine.setProperty('rate', 175)
+            engine.setProperty('volume', 1.0)
             voices = engine.getProperty('voices')
             for v in voices:
                 if any(k in v.name.lower() for k in ["george", "uk", "british", "english"]):

@@ -126,7 +126,8 @@ class StarkVoiceEngine:
                     text=formatted,
                     voice=self.profile.primary_voice,
                     rate=self.profile.speech_rate,
-                    pitch=self.profile.pitch_adjustment
+                    pitch=self.profile.pitch_adjustment,
+                    volume=getattr(config, "TTS_VOLUME", "+100%")
                 )
                 await comm.save(str(temp_path))
 
