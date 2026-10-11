@@ -71,3 +71,11 @@ venv.bak/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# ----------------------------------------------------
+# 7. Local Model Weights & Offline Engine Binaries
+# ----------------------------------------------------
+models/
+*.gguf
+*.bin
+

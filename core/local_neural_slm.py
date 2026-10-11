@@ -297,7 +297,7 @@ class LocalNeuralSLM:
 
         return None
 
-    def reason(self, prompt: str, context: str = "") -> Optional[str]:
+    def reason(self, prompt: str, context: str = "", enable_generative_slm: bool = True) -> Optional[str]:
         """
         Executes sub-5ms local edge reasoning.
         Evaluates math, unit conversions, semantic knowledge, and contextual memory records.
@@ -334,6 +334,16 @@ class LocalNeuralSLM:
 
                 if best_line and max_matches >= 2:
                     return f"According to stored memory records, sir: {best_line}"
+
+        # 5. Generative Neural SLM deduction (100% offline Qwen2.5 GGUF on AMD Ryzen CPU)
+        if enable_generative_slm:
+            try:
+                from core.stark_neural_manager import stark_neural_manager
+                res = stark_neural_manager.generate_response(prompt)
+                if res.success and res.text:
+                    return res.text
+            except Exception:
+                pass
 
         return None
 
