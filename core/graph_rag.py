@@ -472,6 +472,285 @@ class GraphRAG:
             "entity_types": types
         }
 
+    def ingest_stark_knowledge_graph(
+        self,
+        archive_engine: Optional[Any] = None,
+        cad_manager: Optional[Any] = None
+    ) -> Dict[str, int]:
+        """
+        Cross-links all STEM articles, periodic elements, and 3D CAD blueprints
+        into the relational GraphRAG SQLite engine with multi-hop semantic edges.
+        """
+        entities_added = 0
+        relations_added = 0
+
+        # 1. Ingest CAD Blueprints & Hardware Subsystems
+        if cad_manager is None:
+            try:
+                from core.cad_blueprint_manager import CADBlueprintManager
+                cad_manager = CADBlueprintManager()
+            except Exception as e:
+                logger.warning(f"Could not load CADBlueprintManager for graph ingestion: {e}")
+
+        if cad_manager and hasattr(cad_manager, "catalog"):
+            for bp_id, bp in cad_manager.catalog.items():
+                self.upsert_entity(
+                    name=bp.name,
+                    entity_type="cad_hardware_system",
+                    description=f"{bp.description} Category: {bp.category}. Mass: {bp.mass_kg}kg, Power: {bp.power_draw_kw}kW.",
+                    properties={
+                        "blueprint_id": bp.blueprint_id,
+                        "category": bp.category,
+                        "mass_kg": bp.mass_kg,
+                        "power_draw_kw": bp.power_draw_kw,
+                        "vertex_count": bp.vertex_count,
+                        "face_count": bp.face_count,
+                        "file_path": bp.file_path,
+                    }
+                )
+                entities_added += 1
+
+                # Link materials to hardware system
+                for mat_name in bp.materials:
+                    self.upsert_entity(
+                        name=mat_name,
+                        entity_type="aerospace_material",
+                        description=f"Advanced material alloy specified for Stark engineering assets: {mat_name}."
+                    )
+                    entities_added += 1
+
+                    self.add_relation(
+                        source_name=bp.name,
+                        target_name=mat_name,
+                        relation_type="USES_MATERIAL",
+                        weight=1.5,
+                        properties={"specification_role": "structural_skin"}
+                    )
+                    relations_added += 1
+
+            # Known inter-subsystem relations
+            subsystem_edges = [
+                ("Mark 50 Toroidal Arc Reactor (Exploded View)", "Iron Man Mark 85 Full Tactical Armor", "POWERS", 2.0),
+                ("Mark 50 Toroidal Arc Reactor (Exploded View)", "Stark Hypersonic Tactical UAV Airframe", "POWERS", 1.5),
+                ("Mark 50 Toroidal Arc Reactor (Exploded View)", "Mark 85 High-Definition Repulsor Gauntlet", "POWERS", 2.0),
+                ("Mark 85 High-Definition Repulsor Gauntlet", "Iron Man Mark 85 Full Tactical Armor", "SUBSYSTEM_OF", 1.8),
+                ("Dum-E Workshop Robotic Articulated Arm", "Iron Man Mark 85 Full Tactical Armor", "ASSEMBLES", 1.2),
+                ("Dum-E Workshop Robotic Articulated Arm", "Mark 85 High-Definition Repulsor Gauntlet", "ASSEMBLES", 1.2),
+            ]
+            for src, tgt, rel, w in subsystem_edges:
+                if self.get_entity(src) and self.get_entity(tgt):
+                    self.add_relation(src, tgt, rel, weight=w)
+                    relations_added += 1
+
+        # 2. Ingest Stark Global Archive Articles
+        if archive_engine is None:
+            try:
+                from core.stark_archive import StarkArchiveEngine
+                archive_engine = StarkArchiveEngine()
+            except Exception as e:
+                logger.warning(f"Could not load StarkArchiveEngine for graph ingestion: {e}")
+
+        if archive_engine:
+            articles = archive_engine.get_all_articles(limit=500)
+            for art in articles:
+                ent_type = f"stark_{art.category}"
+                self.upsert_entity(
+                    name=art.title,
+                    entity_type=ent_type,
+                    description=art.summary,
+                    properties={
+                        "category": art.category,
+                        "formulas": art.formulas,
+                        "specifications": art.specifications
+                    }
+                )
+                entities_added += 1
+
+                # Establish material & element linkages
+                title_lower = art.title.lower()
+                if "titanium" in title_lower and "gold" in title_lower:
+                    self.add_relation(art.title, "Titanium (Ti)", "ALLOYED_FROM", weight=1.4)
+                    self.add_relation(art.title, "Gold (Au)", "ALLOYED_FROM", weight=1.4)
+                    self.add_relation(art.title, "High-Altitude Icing Dynamics", "MITIGATES", weight=2.0)
+                    relations_added += 3
+
+                    # Link to Mark 85
+                    if self.get_entity("Iron Man Mark 85 Full Tactical Armor"):
+                        self.add_relation("Iron Man Mark 85 Full Tactical Armor", art.title, "ENGINEERED_WITH", weight=1.8)
+                        relations_added += 1
+
+                elif "ti-6al-4v" in title_lower or "grade 5" in title_lower:
+                    self.add_relation(art.title, "Titanium (Ti)", "ALLOYED_FROM", weight=1.4)
+                    self.add_relation(art.title, "Aluminium (Al)", "ALLOYED_FROM", weight=1.2)
+                    self.add_relation(art.title, "Vanadium (V)", "ALLOYED_FROM", weight=1.2)
+                    relations_added += 3
+                    if self.get_entity("Stark Hypersonic Tactical UAV Airframe"):
+                        self.add_relation("Stark Hypersonic Tactical UAV Airframe", art.title, "ENGINEERED_WITH", weight=1.6)
+                        relations_added += 1
+
+                elif "arc reactor" in title_lower:
+                    if self.get_entity("Mark 50 Toroidal Arc Reactor (Exploded View)"):
+                        self.add_relation("Mark 50 Toroidal Arc Reactor (Exploded View)", art.title, "THEORY_OF", weight=2.0)
+                        relations_added += 1
+                    self.add_relation(art.title, "Palladium (Pd)", "USES_ELEMENT", weight=1.3)
+                    self.add_relation(art.title, "Beryllium (Be)", "USES_ELEMENT", weight=1.3)
+                    relations_added += 2
+
+                elif "is 2190" in title_lower or "fire" in title_lower:
+                    self.add_relation(art.title, "Fire Engineering & Suppression Dynamics", "GOVERNS", weight=1.7)
+                    relations_added += 1
+
+                elif "cryptography" in title_lower or "aes-256" in title_lower:
+                    if self.get_entity("Iron Man Mark 85 Full Tactical Armor"):
+                        self.add_relation("Iron Man Mark 85 Full Tactical Armor", art.title, "SECURING_AVIONICS", weight=1.5)
+                        relations_added += 1
+
+        logger.info(f"Stark Knowledge Graph Ingestion Complete: {entities_added} entities, {relations_added} relations.")
+        return {
+            "entities_added": entities_added,
+            "relations_added": relations_added
+        }
+
+    def find_subsystem_dependencies(
+        self,
+        root_system: str,
+        max_hops: int = 3
+    ) -> Dict[str, Any]:
+        """
+        Recursively discovers all upstream power sources, materials, subsystems,
+        and engineering principles connected to a given system within max_hops.
+        """
+        clean_name = root_system.strip()
+        visited: Set[str] = {clean_name}
+        queue: collections.deque = collections.deque([(clean_name, 0, [clean_name])])
+
+        power_sources: List[str] = []
+        materials: List[str] = []
+        subsystems: List[str] = []
+        assembly_units: List[str] = []
+        principles: List[str] = []
+        all_paths: List[List[str]] = []
+
+        while queue:
+            curr_name, depth, path = queue.popleft()
+            if depth >= max_hops:
+                continue
+
+            neighbors = self.get_neighbors(curr_name, direction="both")
+            for neighbor_name, rel_type, weight in neighbors:
+                if neighbor_name not in visited:
+                    visited.add(neighbor_name)
+                    new_path = path + [f"-[{rel_type}]->", neighbor_name]
+                    all_paths.append(new_path)
+                    queue.append((neighbor_name, depth + 1, new_path))
+
+                    # Classify node by relation type or entity type
+                    ent = self.get_entity(neighbor_name)
+                    ent_type = ent.entity_type if ent else ""
+
+                    if rel_type in ("POWERS", "POWERED_BY") or "power" in ent_type:
+                        if neighbor_name not in power_sources and neighbor_name != clean_name:
+                            power_sources.append(neighbor_name)
+                    elif rel_type in ("USES_MATERIAL", "ALLOYED_FROM", "ENGINEERED_WITH") or "material" in ent_type or "alloy" in ent_type:
+                        if neighbor_name not in materials and neighbor_name != clean_name:
+                            materials.append(neighbor_name)
+                    elif rel_type in ("SUBSYSTEM_OF", "HAS_SUBSYSTEM") or "subsystem" in ent_type:
+                        if neighbor_name not in subsystems and neighbor_name != clean_name:
+                            subsystems.append(neighbor_name)
+                    elif rel_type in ("ASSEMBLES", "FABRICATES") or "robotics" in ent_type:
+                        if neighbor_name not in assembly_units and neighbor_name != clean_name:
+                            assembly_units.append(neighbor_name)
+                    else:
+                        if neighbor_name not in principles and neighbor_name != clean_name:
+                            principles.append(neighbor_name)
+
+        return {
+            "root_system": clean_name,
+            "total_dependencies": len(visited) - 1,
+            "power_sources": power_sources,
+            "materials": materials,
+            "subsystems": subsystems,
+            "assembly_units": assembly_units,
+            "principles": principles,
+            "paths_discovered": len(all_paths),
+            "sample_paths": all_paths[:5]
+        }
+
+    def query_subsystem_graph(self, system_name: str, depth: int = 2) -> Dict[str, Any]:
+        """
+        Returns full ego-subgraph of nodes and connecting directed edges
+        within 'depth' hops of system_name.
+        """
+        clean_name = system_name.strip()
+        nodes: Dict[str, Dict[str, Any]] = {}
+        edges: List[Dict[str, Any]] = []
+        edge_keys: Set[str] = set()
+
+        root_ent = self.get_entity(clean_name)
+        if root_ent:
+            nodes[clean_name] = {
+                "name": root_ent.name,
+                "type": root_ent.entity_type,
+                "description": root_ent.description,
+                "is_root": True
+            }
+
+        frontier = {clean_name}
+        for _ in range(depth):
+            next_frontier = set()
+            for curr in frontier:
+                neighbors = self.get_neighbors(curr, direction="both")
+                for n_name, rel, weight in neighbors:
+                    if n_name not in nodes:
+                        ent = self.get_entity(n_name)
+                        if ent:
+                            nodes[n_name] = {
+                                "name": ent.name,
+                                "type": ent.entity_type,
+                                "description": ent.description,
+                                "is_root": False
+                            }
+                        next_frontier.add(n_name)
+
+                    edge_key = f"{curr}->{rel}->{n_name}"
+                    if edge_key not in edge_keys:
+                        edge_keys.add(edge_key)
+                        edges.append({
+                            "source": curr,
+                            "target": n_name,
+                            "relation": rel,
+                            "weight": weight
+                        })
+            frontier = next_frontier
+
+        return {
+            "system_name": clean_name,
+            "node_count": len(nodes),
+            "edge_count": len(edges),
+            "nodes": list(nodes.values()),
+            "edges": edges
+        }
+
+    def explain_lineage(self, source_name: str, target_name: str) -> str:
+        """
+        Discovers the relational path between two entities and generates
+        an articulate, Stark-grade technical narrative of their connection.
+        """
+        path = self.find_path(source_name, target_name, max_hops=5)
+        if path is None:
+            return f"No direct or multi-hop relational lineage discovered between '{source_name}' and '{target_name}' within 5 hops."
+        if not path:
+            return f"'{source_name}' and '{target_name}' are identical nodes in the knowledge graph."
+
+        narrative_parts = [f"Relational lineage analysis from '{source_name}' to '{target_name}':"]
+        for idx, (src, rel, tgt) in enumerate(path, 1):
+            rel_phrase = rel.lower().replace("_", " ")
+            narrative_parts.append(f"  Step {idx}: '{src}' {rel_phrase} '{tgt}'.")
+
+        summary = f"Total path length: {len(path)} hops. Direct dependency established."
+        narrative_parts.append(summary)
+        return "\n".join(narrative_parts)
+
 
 # Global Singleton Instance
 graph_rag = GraphRAG()

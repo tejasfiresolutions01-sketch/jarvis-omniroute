@@ -262,6 +262,28 @@ class StarkArchiveEngine:
                 created_at=row["created_at"]
             )
 
+    def get_all_articles(self, limit: int = 500) -> List[ArchiveArticle]:
+        """Retrieves articles from the archive up to limit."""
+        articles = []
+        with self._lock, self._get_conn() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT id, category, title, summary, content, formulas_json, specifications_json, created_at
+                FROM articles ORDER BY id ASC LIMIT ?
+            """, (limit,))
+            for row in cur.fetchall():
+                articles.append(ArchiveArticle(
+                    article_id=row["id"],
+                    category=row["category"],
+                    title=row["title"],
+                    summary=row["summary"],
+                    content=row["content"],
+                    formulas=json.loads(row["formulas_json"]),
+                    specifications=json.loads(row["specifications_json"]),
+                    created_at=row["created_at"]
+                ))
+        return articles
+
     def get_stats(self) -> Dict[str, Any]:
         """Computes statistical metrics and file size of the Stark archive."""
         with self._lock, self._get_conn() as conn:

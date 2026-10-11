@@ -13,6 +13,7 @@ Features:
 """
 
 import ast
+import json
 import logging
 import os
 import shutil
@@ -154,6 +155,8 @@ class PolyglotRuntime:
 
             start_t = time.perf_counter()
             timed_out = False
+            env = os.environ.copy()
+            env["PYTHONPATH"] = str(PROJECT_ROOT) + (os.pathsep + env["PYTHONPATH"] if "PYTHONPATH" in env else "")
             try:
                 proc = subprocess.run(
                     cmd,
@@ -162,6 +165,7 @@ class PolyglotRuntime:
                     capture_output=True,
                     timeout=timeout_s,
                     cwd=str(self._scratch_dir),
+                    env=env,
                 )
                 elapsed_ms = (time.perf_counter() - start_t) * 1000.0
                 stdout = proc.stdout.strip()
@@ -287,6 +291,55 @@ class PolyglotRuntime:
             return None, False
 
         return [sys.executable, p_str], False
+
+    def run_stark_simulation(self, domain: str, **kwargs) -> Dict[str, Any]:
+        """
+        Executes physics/aerospace/structural simulation directly in the local sandbox.
+        """
+        try:
+            from tools.stark_simulation_sandbox import stark_sim_sandbox
+            return stark_sim_sandbox.run_simulation(domain, **kwargs)
+        except Exception as e:
+            logger.error(f"Failed to run Stark simulation '{domain}': {e}")
+            return {"error": str(e), "domain": domain}
+
+    def generate_simulation_script(self, domain: str, language: str = "python", **kwargs) -> str:
+        """
+        Generates standalone, runnable code for a physical engineering simulation.
+        """
+        lang = language.lower().strip()
+        d = domain.lower().strip()
+
+        if lang in ["python", "py"]:
+            return f"""# J.A.R.V.I.S. Autonomous Simulation Routine: {d.upper()}
+import json
+from tools.stark_simulation_sandbox import stark_sim_sandbox
+
+params = {json.dumps(kwargs, indent=4)}
+result = stark_sim_sandbox.run_simulation("{d}", **params)
+print("--- STARK SIMULATION TELEMETRY ---")
+print(json.dumps(result, indent=2))
+"""
+        elif lang in ["javascript", "js"]:
+            return f"""// J.A.R.V.I.S. Simulation Script: {d.upper()}
+const params = {json.dumps(kwargs)};
+console.log("STARK JS SIMULATION DISPATCH: {d}", JSON.stringify(params));
+"""
+        else:
+            return f"# Simulation script for domain {domain} in {language}\n"
+
+    def benchmark_stark_simulation(
+        self,
+        domain: str,
+        iterations: int = 5,
+        **kwargs
+    ) -> Dict[str, Any]:
+        """
+        Synthesizes a Python simulation script and executes it repeatedly
+        in the sandboxed subprocess to measure cold-start and execution latency.
+        """
+        script = self.generate_simulation_script(domain, language="python", **kwargs)
+        return self.benchmark_snippet(script, language="python", iterations=iterations)
 
 
 # Global Singleton Runtime
