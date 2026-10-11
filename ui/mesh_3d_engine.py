@@ -429,6 +429,15 @@ class MeshLoader:
             mesh.normalize(65.0)
             return mesh
 
+        # Dynamic lookup in 3D CAD Blueprint Asset Matrix
+        try:
+            from core.cad_blueprint_manager import cad_blueprint_manager
+            cad_mesh = cad_blueprint_manager.load_wireframe_mesh(m)
+            if cad_mesh is not None:
+                return cad_mesh
+        except Exception:
+            pass
+
         else:  # "globe" default
             nodes = []
             edges = []

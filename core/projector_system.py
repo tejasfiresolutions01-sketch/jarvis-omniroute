@@ -50,7 +50,8 @@ class ProjectorSystem:
     SUPPORTED_MODELS = [
         "helmet", "reactor", "globe", "tesseract", "drone",
         "gauntlet", "emitter", "neural_mesh", "planetary_radar", "quantum_dna",
-        "acoustic_ribbon"
+        "acoustic_ribbon", "mark85_armor_full", "arc_reactor_exploded",
+        "repulsor_gauntlet_hd", "dume_robotic_arm"
     ]
     PALETTES = ["stark_cyan", "mark_crimson", "quantum_emerald", "plasma_amber", "ultraviolet_violet"]
 
