@@ -222,6 +222,25 @@ class DockedTacticalHUD:
                 pass
 
 
+def launch_detached_hud() -> bool:
+    """Launches the Docked Tactical HUD as an independent detached desktop process."""
+    import subprocess
+    cmd = [sys.executable, "-m", "ui.docked_tactical_hud"]
+    creationflags = 0
+    if sys.platform == "win32":
+        creationflags = subprocess.CREATE_NEW_PROCESS_GROUP | 0x00000008  # DETACHED_PROCESS
+    try:
+        subprocess.Popen(
+            cmd,
+            cwd=str(PROJECT_ROOT),
+            creationflags=creationflags,
+            close_fds=True
+        )
+        return True
+    except Exception:
+        return False
+
+
 # Global Singleton Instance
 docked_tactical_hud = DockedTacticalHUD()
 
