@@ -36,6 +36,18 @@ from ui.mesh_3d_engine import Mesh3D, MeshLoader
 from ui.projector_3d import ProjectorMeshLibrary
 
 
+def _attach_to_interactive_desktop():
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            user32 = ctypes.windll.user32
+            hdesk = user32.OpenDesktopW("Default", 0, False, 0x01FF)
+            if hdesk:
+                user32.SetThreadDesktop(hdesk)
+        except Exception:
+            pass
+
+
 class DockedTacticalHUD:
     """
     Unified Desktop Tactical HUD Overlay.
@@ -53,6 +65,7 @@ class DockedTacticalHUD:
 
     def build_window(self):
         """Constructs the Tkinter HUD interface."""
+        _attach_to_interactive_desktop()
         self.root = tk.Tk()
         self.root.title("J.A.R.V.I.S. // TACTICAL HUD")
         self.root.geometry(f"{self.width}x{self.height}+20+40")
